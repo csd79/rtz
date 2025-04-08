@@ -1,0 +1,3 @@
+séma létrehozása
+feltöltés 1 excelből
+tallozás
