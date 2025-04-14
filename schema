@@ -1,0 +1,60 @@
+IGENYLESEK
+ igenyles_id
+ szemely_id
+ igazolvanyszam
+ szerv_egys_id
+ beosztas_id
+ telefon
+ email
+ kinevezes_kezdete
+ kinevezes_vege
+ t_sorozatszam
+ t_ervenyesseg_kezdete
+ t_ervenyesseg_vege
+ t_tipus_id
+ t_kapcs_eszkoz_id
+ t_allapot_id
+ t_visszavonas_datuma
+
+T_TIPUSOK
+ t_tipus_id
+ t_tipus
+
+T_KAPCS_ESZKOZOK
+ t_kapcs_eszkoz_id
+ t_kapcs_eszkoz
+
+T_ALLAPOTOK
+ t_allapot_id
+ t_allapot
+
+SZERV_EGYSEGEK
+ szerv_egys_id
+ szerv_egys
+
+BEOSZTASOK
+ beosztas_id
+ beosztas
+
+SZEMELYEK
+ szemely_id
+ viselt_csaladnev
+ viselt_utonev_1
+ viselt_utonev_2
+ szul_csaladnev
+ szul_utonev_1
+ szul_utonev_2
+ anya_csaladnev
+ anya_utonev_1
+ anya_utonev_2
+ varos_id
+ szul_datuma
+
+VAROSOK
+ varos_id
+ orszag_id
+ varos
+
+ORSZAGOK
+ orszag_id
+ orszag

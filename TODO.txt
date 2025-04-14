@@ -1,3 +1,44 @@
 séma létrehozása
 feltöltés 1 excelből
 tallozás
+
+
+
+
+Timeout egységes kezelése
+Legyen egy állítható várakozási idő. Ennek leteltével jelenjen meg egy üzenet hogy újra próbálkozás kezdődik 10..9 mp múlva, hacsak meg nem szakítjuk, és érdemes ellenőrizni a hálózatot vagy a többi felhasználót.
+
+
+
+
+Jelentkezhetnek SQL hibák, amiket jó lenne kezelni:
+Hibajelzés megjelenítése, mentése
+Hibás tétel átugrása
+
+
+
+
+Kül. felhasználóknak kell saját:
+temp táblázat(ok)
+
+
+
+
+
+
+Lehet hogy az igénylőlapban benne lesz a TK??
+
+
+
+
+Az alábbi mezők nincsenek az eredeti igénylőben. Ezek utólag lesznek hozzáadva? Egyszerre vagy részletekben?
+Az igénylőben lévő mezőkből együttesen lehetne indexet ami segít beazonosítani ezeket?
+Tankerületi központ neve
+Tanúsítvány sorozatszáma
+Tanúsítvány érvényességének kezdete
+Tanúsítvány érvényességének vége
+Tanúsítvány típusa
+Tanúsítványhoz kapcsolódó eszköz
+Tanúsítvány állapota
+Visszavonva
+Visszavonás időpontja
