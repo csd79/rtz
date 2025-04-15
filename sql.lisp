@@ -24,6 +24,7 @@
                      (str:collapse-whitespaces 
                       (str:trim result)))))
 
+
 (defun new-temp-name (existing infix)
   "Create a name using INFIX that is not a member of EXISTING names."
   ;; MIGHT LOOP FOREVER!
@@ -60,12 +61,13 @@
                            (format nil "(~{~a~^, ~})" (parse-sql-elements element))))))
           list))
 
+
 (defun sql (database control-string &rest elements)
   "Execute statement on DATABASE interpolating ELEMENTS into CONTROL-STRING."
   (let ((statement (apply #'format nil control-string
                           (parse-sql-elements elements))))
-    (execute-to-list database statement)))
-;    statement))
+;    (execute-to-list database statement)))
+    statement))
 
 
 ;;; ----------------------------------------------------------------------
@@ -77,15 +79,37 @@
   (apply #'sql db "create table ~a ~a"
          table-name column-descriptions))
 
+
 (defun insert-into (db table-name destinations &rest values)
   "Insert values into TABLE.NAME."
   (apply #'sql db "insert into ~a ~a values ~a"
          table-name destinations values))
 
+
 ;(defun select-from (db table-name &rest table-and-columns)
 ;  (apply #'sql db "select
+
 
 (defun table-list (database)
   "List tables in DATABASE."
   (apply #'nconc 
          (sql database "SELECT name FROM sqlite_master WHERE type='table'")))
+
+
+(defun table-info (table database)
+  "Return a list of columns descriptions for TABLE."
+;  (sql database "SELECT sql FROM sqlite_schema WHERE name = '~a'" table))
+  (sql database "pragma table_info(~a)" table))
+
+
+(defun db-info (database)
+  "Print the description of every table in DATABASE."
+  (dolist (table (table-list database))
+    (format t "~%~%~a  -------------------------------------~%~{~a~%~}"
+            table (table-info table database))))
+
+(defun dump-table (table database)
+  "Return a list of all records in TABLE."
+  (sql database "select ~a from ~a"
+       (mapcar #'second (table-info table database))
+       table))

@@ -9,7 +9,6 @@
 
 
 (defparameter *conctest-file* "//kozpfs/Org/Jogi és Személyügyi Fõosztály/Személyügyi Osztály/CsD/db.db")
-(defparameter *timeout* 10000)
 
 (defun conctest-init ()
   (with-open-database (db *conctest-file* :busy-timeout *timeout*)

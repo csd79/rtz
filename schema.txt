@@ -58,3 +58,18 @@ VAROSOK
 ORSZAGOK
  orszag_id
  orszag
+
+
+
+
+
+
+
+igenylesek szemelyek szemely_id
+igenylesek szerv_egysegek szerv_egys_id
+igenylesek beosztasok beosztas_id
+igenylesek t_tipusok t_tipus_id
+igenylesek t_kapcs_eszkozok t_kapcs_eszkoz_id
+igenylesek t_allapotok t_allapot_id
+szemelyek varosok varos_id
+varosok orszagok orszag_id
