@@ -1,13 +1,4 @@
-séma létrehozása
-feltöltés 1 excelből
-tallozás
-
-
-
-
-Timeout egységes kezelése
 Legyen egy állítható várakozási idő. Ennek leteltével jelenjen meg egy üzenet hogy újra próbálkozás kezdődik 10..9 mp múlva, hacsak meg nem szakítjuk, és érdemes ellenőrizni a hálózatot vagy a többi felhasználót.
-
 
 
 
@@ -17,17 +8,7 @@ Hibás tétel átugrása
 
 
 
-
-Kül. felhasználóknak kell saját:
-temp táblázat(ok)
-
-
-
-
-
-
 Lehet hogy az igénylőlapban benne lesz a TK??
-
 
 
 

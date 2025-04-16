@@ -5,7 +5,7 @@
 
 
 (defpackage #:sig
-  (:use #:cl #:sxql #:ccom3 #:achar #:msoffice #:sqlite #:wax)
+  (:use #:cl #:ccom3 #:achar #:msoffice #:sqlite #:wax #:iterate)
   (:export
    #:start
    ))

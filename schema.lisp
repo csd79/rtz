@@ -15,13 +15,11 @@
     ((:table igenylesek
       :columns ((igenyles_id           integer  primary key)
                 (szemely_id            integer  not null)
-                (igazolva nyszam        text     not null)
+                (igazolva nyszam       text     not null)
                 (szerv_egys_id         integer  not null)
                 (beosztas_id           integer  not null)
                 (telefon               text     not null)
                 (email                 text     not null)
-                (kinevezes_kezdete     text     not null) ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-                (kinevezes_vege        text     not null) ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                 (t_sorozatszam         text)
                 (t_ervenyesseg_kezdete text)
                 (t_ervenyesseg_vege    text)
@@ -111,8 +109,6 @@
      igazolvanyszam
      telefon
      email
-     kinevezes_kezdete ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-     kinevezes_vege    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
      t_sorozatszam
      t_ervenyesseg_kezdete
      t_ervenyesseg_vege

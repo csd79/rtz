@@ -66,8 +66,8 @@
   "Execute statement on DATABASE interpolating ELEMENTS into CONTROL-STRING."
   (let ((statement (apply #'format nil control-string
                           (parse-sql-elements elements))))
-;    (execute-to-list database statement)))
-    statement))
+    (execute-to-list database statement)))
+;    statement))
 
 
 ;;; ----------------------------------------------------------------------

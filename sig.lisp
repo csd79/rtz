@@ -32,7 +32,7 @@
       (create-table db table
                     (mapcar #'(lambda (column)
                                 (nconc (list :lit column)
-                                       (column-description table column)))
+                                        (column-description table column)))
                             (list-schema-table-columns table))))))
 
 #|
@@ -63,5 +63,7 @@
   (with-db-context
     (init-db *db*)
     (single-xlsx->new-temp *db* *test-data-1* "denes")
-    (db-info *db*)
-    
+    (dolist (table (table-list *db*))
+      (dump-table table *db*))
+    ))
+
