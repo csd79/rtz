@@ -1,3 +1,33 @@
+UTILITIES
+  Excel support: ÚJRAÍRNI
+
+SQLITE
+  AZ EGÉSZET ÚJRAÍRNI EGYSZERŰBBRE, HASZNÁLJA AZ UTILS/SQ-TEXT-ET
+
+IMPORT
+  Big import fn: FELDARABOLNI
+
+SIG
+  init: ÁTÍRNI SQLITE ÚJ VERZIÓJA ÉRTELMÉBEN
+
+SANDBOX
+  conctest: ÁTÍRNI
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Legyen egy állítható várakozási idő. Ennek leteltével jelenjen meg egy üzenet hogy újra próbálkozás kezdődik 10..9 mp múlva, hacsak meg nem szakítjuk, és érdemes ellenőrizni a hálózatot vagy a többi felhasználót.
 
 

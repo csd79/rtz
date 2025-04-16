@@ -4,6 +4,7 @@
 (in-package #:sig)
 
 
+#|
 ;;; ----------------------------------------------------------------------
 ;;; Concurrency test
 
@@ -52,3 +53,20 @@
 (defun conctest-start ()
   (let ((obj (make-instance 'wax-script :execute-fn #'process)))
     (wax-execute obj :errorsink-on nil)))
+
+
+;;; ----------------------------------------------------------------------
+;;; Random
+
+
+(defparameter *test-data-1* "c:/Users/cselovszkid/common-lisp/sig/tesztadatok.xlsx")
+
+
+(defun test01 ()
+  (with-db-context
+    (init-db *db*)
+    (single-xlsx->new-temp *db* *test-data-1* "denes")
+    (dolist (table (table-list *db*))
+      (dump-table table *db*))
+    ))
+|#

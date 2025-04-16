@@ -4,21 +4,9 @@
 (in-package #:sig)
 
 
+#|
 ;;; ----------------------------------------------------------------------
-;;; Globals
-
-
-(defparameter *db-location* #P"//kozpfs/Homes/Cselovszkid/")
-(defparameter *db-name* "sig.db")
-(define-symbol-macro %dbfile% (merge-pathnames *db-name* *db-location*))
-
-(defparameter *db* nil)
-(defparameter *timeout* 10000)
-(defparameter *auto-close* t)
-
-
-;;; ----------------------------------------------------------------------
-;;; Initialize schema
+;;; Initialize database
 
 
 (defun init-db (db)
@@ -48,22 +36,6 @@
 ;;; Main
 
 
-;(defun start ()
-;  nil)
-
-
-;;; ----------------------------------------------------------------------
-;;; Sandbox
-
-
-(defparameter *test-data-1* "c:/Users/cselovszkid/common-lisp/sig/tesztadatok.xlsx")
-
-
-(defun test01 ()
-  (with-db-context
-    (init-db *db*)
-    (single-xlsx->new-temp *db* *test-data-1* "denes")
-    (dolist (table (table-list *db*))
-      (dump-table table *db*))
-    ))
-
+(defun start ()
+  nil)
+|#

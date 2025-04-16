@@ -4,40 +4,7 @@
 (in-package #:sig)
 
 
-;;; ----------------------------------------------------------------------
-;;; Utilities
-
-
-(defun sqlite-name (string)
-  "Transform STRING so it can be a table/column name in the database."
-  (let ((rewrites '(("á" "a") ("é" "e") ("í" "i") ("ó" "o") ("ö" "o")
-                    ("õ" "o") ("ú" "u") ("ü" "u") ("û" "u")))
-        (result   (astring-downcase (copy-seq string))))
-    (loop for i from 0 below (length result)
-          for c = (elt result i) doing
-          (unless (or (alpha-achar-p c)
-                      (digit-char-p c))
-            (setf (elt result i) #\Space)))
-    (dolist (pair rewrites)
-      (setf result (str:replace-all (first pair) (second pair) result)))
-    (str:replace-all " " "_"
-                     (str:collapse-whitespaces 
-                      (str:trim result)))))
-
-
-(defun new-temp-name (existing infix)
-  "Create a name using INFIX that is not a member of EXISTING names."
-  ;; MIGHT LOOP FOREVER!
-  (flet ((worker (&optional (length 6))
-           (let ((charlist (loop for i from 0 below length collecting
-                                 (code-char (+ (random 23) 65)))))
-             (concatenate 'string "temp_"  infix "_"
-                          (coerce charlist 'string)))))
-    (loop for name = (worker)
-          while (member name existing :test #'string=)
-          finally return name)))
-
-
+#|
 ;;; ----------------------------------------------------------------------
 ;;; Base layer
 
@@ -90,12 +57,6 @@
 ;  (apply #'sql db "select
 
 
-(defun table-list (database)
-  "List tables in DATABASE."
-  (apply #'nconc 
-         (sql database "SELECT name FROM sqlite_master WHERE type='table'")))
-
-
 (defun table-info (table database)
   "Return a list of columns descriptions for TABLE."
 ;  (sql database "SELECT sql FROM sqlite_schema WHERE name = '~a'" table))
@@ -113,3 +74,4 @@
   (sql database "select ~a from ~a"
        (mapcar #'second (table-info table database))
        table))
+|#
