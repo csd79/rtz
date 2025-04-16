@@ -4,34 +4,41 @@
 (in-package #:sig)
 
 
-#|
 ;;; ----------------------------------------------------------------------
 ;;; Concurrency test
 
 
-(defparameter *conctest-file* "//kozpfs/Org/Jogi és Személyügyi Fõosztály/Személyügyi Osztály/CsD/db.db")
+(defparameter *ctest-iterations* 50)
 
-(defun conctest-init ()
-  (with-open-database (db *conctest-file* :busy-timeout *timeout*)
-    (create-table db 'teszt '((:lit id integer primary key)
-                              (:lit szoveg string not null)
-                              (:lit szam integer not null)))))
+(defmacro with-ctest-db (&body body)
+  `(let ((*db-location* #P"//kozpfs/Org/Jogi és Személyügyi Fõosztály/Személyügyi Osztály/CsD/")
+         (*db-name* "db.db"))
+     (with-db-context
+       ,@body)))
 
-(defun conctest-insert (string-prefix)
+(defun ctest-init ()
+  (with-ctest-db
+    (drop-all-tables *db*)
+    (create-table *db* 'teszt '((id integer primary key)
+                                (szoveg text not null)
+                                (szam integer)))))
+
+
+(defun ctest-insert (prefix)
   (let ((unitime (get-universal-time)))
-    (with-open-database (db *conctest-file* :busy-timeout *timeout*)
-      (insert-into db 'teszt '(szoveg szam)
-                   (list (format nil "~a_~a" string-prefix unitime)
-                         unitime)))
+    (with-ctest-db
+      (insert-into *db* 'teszt '(szoveg szam)
+;      (insert-into *db* 'teszt 'szoveg
+                   (format nil "~a_~a" prefix unitime)
+                   unitime))
     unitime))
 
-(defun conctest-dump ()
-  (with-open-database (db *conctest-file* :busy-timeout *timeout*)
+(defun ctest-dump ()
+  (with-ctest-db
     (values
-     (sql db "select szoveg, szam from teszt")
-     (sql db "select id, count(*) from teszt"))))
-
-(defparameter *conctest-iterations* 300)
+     (dump-table 'teszt *db*)
+     (number-of-rows 'teszt *db*))))
+;     (sql->list *db* "select szoveg, count(*) from teszt"))))
 
 (defun process (obj)
   (let ((prefix (concatenate 'string
@@ -40,17 +47,20 @@
                                            collecting c)
                                      'string)
                              "_")))
-    (wax::with-progress-new ("Konkurrens INSERT" obj *conctest-iterations*)
-      (dump obj "~a iteráció~%~%" *conctest-iterations*)
-      (dotimes (i *conctest-iterations*)
-        (dump obj "~a~%" (conctest-insert prefix))
+    (wax::with-progress-new ("Konkurens INSERT" obj *ctest-iterations*)
+      (dump obj "~a iteráció~%~%" *ctest-iterations*)
+      (dotimes (i *ctest-iterations*)
+        (dump obj "~a~%" (ctest-insert prefix))
         (pstep obj)
         (pabort obj))
-      (multiple-value-bind (big small)
-          (conctest-dump)
-        (dump obj "~%~%~a~%~%Rekordok száma: ~a~%" big small)))))
+      (multiple-value-bind (dump number-of-rows)
+          (ctest-dump)
+;        (dump obj "~%~%~a~%~%Rekordok száma: ~a~%" big (second (first small))))))
+        (dump obj "~%~%~a~%~%Rekordok száma: ~a~%" dump number-of-rows))))
+  (with-ctest-db
+    (table-info 'teszt *db*)))
 
-(defun conctest-start ()
+(defun ctest-start ()
   (let ((obj (make-instance 'wax-script :execute-fn #'process)))
     (wax-execute obj :errorsink-on nil)))
 
@@ -59,6 +69,7 @@
 ;;; Random
 
 
+#|
 (defparameter *test-data-1* "c:/Users/cselovszkid/common-lisp/sig/tesztadatok.xlsx")
 
 

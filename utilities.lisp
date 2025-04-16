@@ -5,6 +5,35 @@
 
 
 ;;; ----------------------------------------------------------------------
+;;; General
+
+
+(defun string->symbol (arg)
+  "If ARG is a string, convert it to a symbol."
+  (typecase arg
+    (symbol arg)
+    (string (intern (string-upcase arg)))
+    (t      nil)))
+
+
+(defun symbol->string (arg)
+  "If ARG is a symbol, convert it to a string."
+  (typecase arg
+    (symbol (symbol-name arg))
+    (string arg)
+    (t      nil)))
+
+
+(defun rmapcar (function sequence)
+  "Recursive version of mapcar for a single SEQUENCE (of sequences) argument."
+  (mapcar #'(lambda (element)
+              (if (sequencep element)
+                (rmapcar function element)
+                (funcall function element)))
+          (coerce sequence 'list)))
+
+
+;;; ----------------------------------------------------------------------
 ;;; Database context
 
 
@@ -33,14 +62,14 @@
 
 (defun select-table (table &optional (schema *schema*))
   "Get TABLE's sub-plist from SCHEMA."
-  (find-if #'(lambda (record) (eq (getf record :table) table))
+  (find-if #'(lambda (record) (eq (getf record :table) (string->symbol table)))
            (getf schema :tables)))
 
 
 (defun select-column (column table &optional (schema *schema*))
   "Get COLUMN's sub-plist from TABLE's sub-plist from SCHEMA."
-  (find-if #'(lambda (record) (eq (getf record :column) column))
-           (getf (select-table table schema) :columns)))
+  (find-if #'(lambda (record) (eq (getf record :column) (string->symbol column)))
+           (getf (select-table (string->symbol table) schema) :columns)))
 
 
 (defun schema-tables (&optional (schema *schema*))
@@ -62,29 +91,31 @@
 
 (defun many-joins (table &optional (schema *schema*))
   "List joins defined for many-table TABLE."
-  (remove-if-not #'(lambda (record) (eq (first record) table))
+  (remove-if-not #'(lambda (record) (eq (first record) (string->symbol table)))
                  (getf schema :connections)))
 
 
 ;;; ----------------------------------------------------------------------
-;;; SQLite statement text
+;;; SQL statement text
 
 
-(defun sqlite-name (string)
+(defun sql-name (arg)
   "Transform STRING so it can be a table/column name in the database."
-  (let ((rewrites '(("á" "a") ("é" "e") ("í" "i") ("ó" "o") ("ö" "o")
-                    ("õ" "o") ("ú" "u") ("ü" "u") ("û" "u")))
-        (result   (astring-downcase (copy-seq string))))
-    (loop for i from 0 below (length result)
-          for c = (elt result i) doing
-          (unless (or (alpha-achar-p c)
-                      (digit-char-p c))
-            (setf (elt result i) #\Space)))
-    (dolist (pair rewrites)
-      (setf result (str:replace-all (first pair) (second pair) result)))
-    (str:replace-all " " "_"
-                     (str:collapse-whitespaces 
-                      (str:trim result)))))
+  (let ((string (symbol->string arg)))
+    (when string
+      (let ((rewrites '(("á" "a") ("é" "e") ("í" "i") ("ó" "o") ("ö" "o")
+                        ("õ" "o") ("ú" "u") ("ü" "u") ("û" "u")))
+            (result   (astring-downcase (copy-seq string))))
+        (loop for i from 0 below (length result)
+              for c = (elt result i) doing
+              (unless (or (alpha-achar-p c)
+                          (digit-char-p c))
+                (setf (elt result i) #\Space)))
+        (dolist (pair rewrites)
+          (setf result (str:replace-all (first pair) (second pair) result)))
+        (str:replace-all " " "_"
+                         (str:collapse-whitespaces 
+                          (str:trim result)))))))
 
 
 (defun existing-tables (database)
@@ -119,11 +150,112 @@
           (many-joins table schema)))
 
 
-#|
+(defun column-names (arg)
+  "Parse a list of column names from ARG."
+  (let ((list
+         (typecase arg
+           (list   arg)
+           (string (str:words arg))
+           (xarray (coerce (head arg) 'list))
+           (vector (coerce arg 'list))
+           (array  (loop for c from 0 below (array-dimension arg 1)
+                         collecting (aref arg 0 c)))
+           (t      (error "Cannot parse a list of column names from ~a." arg)))))
+    (mapcar #'sql-name list)))
+
+
+(defun sequencep (value)
+  "T if VALUE is of type sequence."
+  (typep value 'sequence))
+
+
+#|(defun list-of-strings-p (value)
+  "T if VALUE is a list of strings."
+  (and (listp value)
+       (every #'identity (mapcar #'stringp value))))
+(deftype list-of-strings () '(satisfies list-of-strings-p))|#
+(defun seq-of-strings-p (value)
+  "T if VALUE is a sequence of strings."
+  (and value
+       (sequencep value)
+       (every #'identity (mapcar #'stringp (coerce value 'list)))))
+(deftype seq-of-strings () '(satisfies seq-of-strings-p))
+
+
+#|(defun list-of-lists-p (value)
+  "T if VALUE is a list of lists."
+  (and (listp value)
+       (every #'identity (mapcar #'listp value))))
+(deftype list-of-lists () '(satisfies list-of-lists-p))|#
+(defun seq-of-seqs-p (value)
+  "T if VALUE is a sequence of sequences."
+  (and value
+       (sequencep value)
+       (every #'identity (mapcar #'sequencep (coerce value 'list)))))
+(deftype seq-of-seqs () '(satisfies seq-of-seqs-p))
+
+
+(defun stringp-or-symbolp (value)
+  "T if VALUE is either a string or a symbol."
+  (or (stringp value)
+      (symbolp value)))
+
+
+#|(defun list-of-strings-or-symbols-p (value)
+  "T if VALUE is a list of strings or symbols."
+  (and (listp value)
+       (every #'identity (mapcar #'(lambda (element)
+                                     (or (stringp element)
+                                         (symbolp element)))
+                                 value))))
+(deftype list-of-strings-or-symbols () '(satisfies list-of-strings-or-symbols-p))|#
+(defun seq-of-strings-or-symbols-p (value)
+  "T if VALUE is a sequence of strings or symbols."
+  (and value
+       (sequencep value)
+       (every #'identity (mapcar #'stringp-or-symbolp
+                                 (coerce value 'list)))))
+(deftype seq-of-strings-or-symbols ()
+  '(satisfies seq-of-strings-or-symbols-p))
+
+
+(defun seq-of-seqs-of-strings-or-symbols-p (value)
+  "T if VALUE is a sequence of sequences of strings or symbols."
+  (and value
+       (sequencep value)
+       (every #'identity (mapcar #'seq-of-strings-or-symbols-p
+                                 (coerce value 'list)))))
+(deftype seq-of-seqs-of-strings-or-symbols ()
+  '(satisfies seq-of-seqs-of-strings-or-symbols-p))
+
+
+
+(defun sql-list (list &key (row nil))
+  "Turn a list a strings into az SQL list:
+  ('a b c' 'x y' '1 2 3') => '(a b c, x y, 1 2 3)'   "
+  (assert (typep list 'seq-of-strings-or-symbols)
+      (list)
+    "~a is not a list of strings" list)
+  (let ((open  (if row "(" ""))
+        (close (if row ")" "")))
+    (format nil "~a~{~a~^, ~}~a" open list close)))
+
+
 ;;; ----------------------------------------------------------------------
 ;;; Excel support
 
 
+(defun get-xarray (excel-file)
+  "Return XARRAY containing the first sheet of EXCEL-FILE."
+  (with-property-accessors
+    (setf (property-accessors-on) t)
+    (let ((xarray (with-workbook (:open excel-file :read-only t :wsvars (wsheet) :close t)
+                    (read-xarray (used-range wsheet)))))
+      (setf (property-accessors-on) nil)
+      xarray)))
+
+
+#|
 (defun extract-sql-values (row)
   "Turn values in an xarray ROW into a list a strings."
   (loop for c from 0 below (xarray-width row)

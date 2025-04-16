@@ -19,7 +19,7 @@
            (currents   (table-list db))
            (temp-table (new-temp-name currents infix))
            (tt-key     (intern (string-upcase temp-table) "KEYWORD"))
-           (columns    (format nil "(~{~a~^, ~})" (mapcar #'sqlite-name (coerce (msoffice::head xarray) 'list))))
+           (columns    (format nil "(~{~a~^, ~})" (mapcar #'sql-name (coerce (msoffice::head xarray) 'list))))
            (height     (xarray-actual-height xarray)))
       (setf (property-accessors-on) nil)
       ;; Creating tempt table with columns from xarray header

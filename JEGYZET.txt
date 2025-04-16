@@ -1,7 +1,7 @@
 Oszlop érték validálás
     CREATE TABLE contacts (
-        id INTEGER PRIMARY KEY
-        name TEXT NOT NULL
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
         phone TEXT NOT NULL UNIQUE CHECK (length(phone) >= 10))
 
 

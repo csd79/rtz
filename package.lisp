@@ -13,7 +13,7 @@
    #:schema-columns
    #:column-description
    #:many-joins
-   #:sqlite-name
+   #:sql-name
    #:existing-tables
    #:unique-table-name
    #:join-clauses
