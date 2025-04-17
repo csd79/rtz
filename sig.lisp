@@ -15,15 +15,6 @@
     (create-table db table)))
 
 
-#|
-    Szuperduper, temp tábla import mûködik.
-    Köv: tényleges séma létrehozása
- temp -> táblák import (minden egyszerre)
- lekérdezés táblákból és exportálás Excelbe
- Grafikus felület: böngészés, import/export gombok
-
- |#
-
 ;;; ----------------------------------------------------------------------
 ;;; Main
 

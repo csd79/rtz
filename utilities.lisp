@@ -124,7 +124,7 @@
    #'nconc (execute-to-list database "SELECT name FROM sqlite_master WHERE type='table'")))
 
 
-(defun unique-table-name (database infix)
+#|(defun unique-table-name (database infix)
   "Create name containing INFIX that is not a name of any existing table in DATABASE."
   ;; Worker function, generates string containing random characters and INFIX.
   (flet ((worker (&optional (length 6))
@@ -135,9 +135,16 @@
     ;; Names of existing tables.
     (let ((existing-tables (existing-tables database)))
       ;; Keep calling WORKER until a uniq name is found.
-      (loop for name = (worker)
+      (loop for name = (random-alphanumeric-string 6)
             while (member name existing-tables :test #'string=)
-            finally return name))))
+            finally return name))))|#
+(defun unique-table-name (database infix)
+  "Create name containing INFIX that is not a name of any existing table in DATABASE."
+  (let ((existing-tables (existing-tables database)))
+    (loop for name = (concatenate 'string "temp_" infix "_"
+                                  (random-alphanumeric-string 6))
+          while (member name existing-tables :test #'string=)
+          finally return name)))
 
 
 (defun join-clauses (table &optional (schema *schema*))
@@ -169,11 +176,6 @@
   (typep value 'sequence))
 
 
-#|(defun list-of-strings-p (value)
-  "T if VALUE is a list of strings."
-  (and (listp value)
-       (every #'identity (mapcar #'stringp value))))
-(deftype list-of-strings () '(satisfies list-of-strings-p))|#
 (defun seq-of-strings-p (value)
   "T if VALUE is a sequence of strings."
   (and value
@@ -182,11 +184,6 @@
 (deftype seq-of-strings () '(satisfies seq-of-strings-p))
 
 
-#|(defun list-of-lists-p (value)
-  "T if VALUE is a list of lists."
-  (and (listp value)
-       (every #'identity (mapcar #'listp value))))
-(deftype list-of-lists () '(satisfies list-of-lists-p))|#
 (defun seq-of-seqs-p (value)
   "T if VALUE is a sequence of sequences."
   (and value
@@ -201,14 +198,6 @@
       (symbolp value)))
 
 
-#|(defun list-of-strings-or-symbols-p (value)
-  "T if VALUE is a list of strings or symbols."
-  (and (listp value)
-       (every #'identity (mapcar #'(lambda (element)
-                                     (or (stringp element)
-                                         (symbolp element)))
-                                 value))))
-(deftype list-of-strings-or-symbols () '(satisfies list-of-strings-or-symbols-p))|#
 (defun seq-of-strings-or-symbols-p (value)
   "T if VALUE is a sequence of strings or symbols."
   (and value
@@ -227,7 +216,6 @@
                                  (coerce value 'list)))))
 (deftype seq-of-seqs-of-strings-or-symbols ()
   '(satisfies seq-of-seqs-of-strings-or-symbols-p))
-
 
 
 (defun sql-list (list &key (row nil))
@@ -253,6 +241,23 @@
                     (read-xarray (used-range wsheet)))))
       (setf (property-accessors-on) nil)
       xarray)))
+
+
+#|(defun xlval->sql (value)
+  "Transform VALUE read from Excel for inserting into SQL."
+  (let ((date (parse-hudate value)))
+    (cond
+     ((empty-cell-p value) "NULL")                            ; empty cells will become NULLs
+     ((numberp value) value)                                  ; number
+     (date (apply #'format nil "~4,'0d-~2,'0d-~2,'0d" date))  ; dates will be formed as 2020-01-05
+     (t (format nil "'~a'" value)))))                         ; everything esle will be a 'string'|#
+(defun xlval->sql (value)
+  "Transform VALUE read from Excel for inserting into SQL."
+  (let ((date (parse-hudate value)))
+    (cond
+     ((empty-cell-p value) "NULL")                            ; empty cells will become NULLs
+     (date (apply #'format nil "~4,'0d-~2,'0d-~2,'0d" date))  ; dates will be formed as 2020-01-05
+     (t value))))                                             ; everything esle will pass as-is
 
 
 #|

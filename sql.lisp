@@ -8,6 +8,9 @@
 ;;; Base layer
 
 
+(defparameter *no-ops* nil)
+
+
 (defun statement (control-string &rest params)
   "Construct statement by interpolating PARAMS into CONTROL-STRING."
   (apply #'format nil control-string params))
@@ -16,7 +19,9 @@
 (defun sql->list (db statement &optional (params nil))
   "Execute statement constructed from CONTROL-STRING and PARAMS on DB,
    return results as a list."
-  (apply #'execute-to-list db statement params))
+  (if *no-ops*
+    statement
+    (apply #'execute-to-list db statement params)))
 
 
 (defun column-definition (column table &optional (schema *schema*))
@@ -127,17 +132,18 @@
       (error "Couldn't create table ~a: list of columns is empty." name))))
 
 
-(defun insert-into (db table dest &rest values)
-  "Insert VALUES as new rows into COLUMNS of TABLE."
+(defun insert-worker (db table dest values new-only)
+  "Worker function helping INSERT-INTO and INSERT-NEW-INTO."
   (let* ((width  (if (sequencep dest) (length dest) 1))
          (length (length values))
-         (height (round (/ length width))))
+         (height (round (/ length width)))
+         (ignore (if new-only "OR IGNORE " "")))
     ;; If number of values doesn't correspond with number of columns => error.
     (unless (= length (* width height))
       (error "Numberof columns (~a) is in conflict with number of values (~a)." width length))
     ;; Operation.
     (sql->list db
-               (statement "insert into ~a ~a values ~a" table
+               (statement "insert ~ainto ~a ~a values ~a" ignore table
                           ;; List of destination columns.
                           (sql-list (if (= width 1)
                                       (list dest)
@@ -146,3 +152,13 @@
                           ;; Patern of ?s.
                           (param-pattern width height))
                values)))
+
+
+(defun insert-into (db table dest &rest values)
+  "Insert VALUES as new rows into COLUMNS of TABLE."
+  (insert-worker db table dest values nil))
+
+
+(defun insert-new-into (db table dest &rest values)
+  "Insert only new VALUES as rows into COLUMNS of TABLE."
+  (insert-worker db table dest values t))

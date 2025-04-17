@@ -4,33 +4,50 @@
 (in-package #:sig)
 
 
-#|
 ;;; ----------------------------------------------------------------------
 ;;; Importing
 
 
-(defun single-xlsx->new-temp (db excel-file infix &optional (max-rows 10))
-  "Import contents of EXCEL-FILE into new temp table in DB, return name of temp table."
-  (with-property-accessors
-    (setf (property-accessors-on) t)
-    ;; Reading contents of EXCEL-FILE
-    (let* ((xarray     (with-workbook (:open excel-file :read-only t :wsvars (wsheet) :close t)
-                         (read-xarray (used-range wsheet))))
-           (currents   (table-list db))
-           (temp-table (new-temp-name currents infix))
-           (tt-key     (intern (string-upcase temp-table) "KEYWORD"))
-           (columns    (format nil "(~{~a~^, ~})" (mapcar #'sql-name (coerce (msoffice::head xarray) 'list))))
-           (height     (xarray-actual-height xarray)))
-      (setf (property-accessors-on) nil)
-      ;; Creating tempt table with columns from xarray header
-      (execute-non-query
-       db (format nil "create table ~a ~a" tt-key columns))
-      ;; Insert row groups
-      (loop for g from 0 below height by max-rows
-            for s = (loop for i from g upto (min (1- height) (+ g max-rows)) collecting i)
-            for rows = (xarows xarray (coerce s 'vector)) doing
-            (sql db "insert into ~a ~a values ~a"
-                 temp-table columns (array->sql-values rows)))
-      ;; Return name of temp table
-      temp-table)))
-|#
+(defparameter *rows-per-statement* 10)
+
+
+(defun collect-row-values (rows)
+  "Collect values stored in ROWS into a list in row-major order."
+  (let ((accum '())
+        (width (xarray-width rows)))
+    (do-xarows (row r rows)
+      (push (loop for c from 0 below width collecting (xlval->sql (xcref row c)))
+            accum))
+    (apply #'nconc (nreverse accum))))
+
+
+(defun group-rows (xarray start height)
+  "Xarray rows of one group starting from row START."
+  (let* ((end     (min (1- height) (+ start *rows-per-statement*)))
+         (indices (loop for i from start upto end collecting i)))
+    (xarows xarray (coerce indices 'vector))))
+
+
+(defun import-xarray (db table xarray)
+  "Go over rows of XARRAY by groups, import them into TABLE."
+  (let ((height (xarray-indexed-height xarray)))
+    (wax::with-progress ("Excel importálás" abort dump move height)
+      (loop for start from 0 below height by *rows-per-statement*
+            for rows  = (group-rows xarray start height)
+            for step  = (xarray-indexed-height rows)
+            for vals  = (collect-row-values rows)
+            doing (apply #'insert-into db table (column-names xarray) vals)
+                  (dump "Sorok: ~a - ~a~%" start (+ start step))
+                  (move :step step)
+                  (abort)))))
+
+
+(defun import-xlsx (db xlsx infix)
+  "Import XLSX into a new temp table in DB."
+  (let ((xarray (get-xarray xlsx))
+        (temp   (unique-table-name db infix)))
+    (create-table db temp (column-names xarray))
+    (import-xarray db temp xarray)
+    temp
+    ;;;; It át kéne pakolni az importált adatokat a normalizált táblákba
+    ))

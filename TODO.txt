@@ -1,19 +1,7 @@
-UTILITIES
-  Excel support: ÚJRAÍRNI
-
-IMPORT
-  Big import fn: FELDARABOLNI
-
-
-
-
-
-
-
-
-
-
-
+KÖV. LÉPÉSEK:
+ temp -> táblák import (minden egyszerre)
+ lekérdezés táblákból és exportálás Excelbe
+ Grafikus felület: böngészés, import/export gombok
 
 
 
