@@ -1,0 +1,114 @@
+;; GLOBALS
+  *db-location* ...................... _
+  *db-name* .......................... _
+  %dbfile% ........................... DB file pathname, based on *DB-LOCATION* and *DB-NAME*
+  *db* ............................... DB handle
+  *timeout* .......................... _
+  *auto-close* ....................... _
+
+
+
+;; SCHEMA
+  *schema* ........................... _
+
+
+
+;; UTILITIES
+  string->symbol ..................... convert any string to symbol
+  symbol->string ..................... convert any symbol to string
+  with-db-context .................... establishes DB connection with *TIMEOUT*, closes upon exiting when *AUTO-CLOSE*
+  db-cleanup ......................... should be called upon exiting app
+    ;; SCHEMA HANDLING
+  select-column ...................... get record of column in table
+  schema-tables ...................... list names of tabled
+  schema-columns ..................... list columns of table
+  column-description ................. get SQL description of column in table
+  column-import ...................... get name of import header for column in table
+  many-joins ......................... list joins defined for many-table
+  one-tables ......................... list one-tables
+  many-tables ........................ list many-tables
+  import-columns ..................... list all columns in table that has an import header attached
+  foreign-columns .................... list all columns in table that has no import header attached
+  immediate-p ........................ does column in table have an :import key?
+  foreign-p .......................... is column in table without an :import key?
+  root-table ......................... name of the root table
+  new-only-p ......................... T if table should cointain unique records
+  primary-key-p ...................... T if column is table's primary key
+    ;; TYPES
+  sequencep .......................... _
+  seq-of-strings-p ................... _
+  seq-of-seqs-p ...................... _
+  stringp-or-symbolp ................. _
+  seq-of-strings-or-symbols-p ........ _
+  seq-of-strings-symbols-or-numbers-p  _
+  seq-os-seqs-of-strings-or-symvols-p  _
+    ;; SQL STATEMENTS
+  sql-name ........................... convert symbol/string to string that can name an SQL element
+  existing-tables .................... list existing tables in DB
+  unique-table-name .................. create unique table name in DB containing infix
+  join-clauses ....................... list left join substatements for table
+  column-names ....................... parse column names from: list, string, xarray, vector, array
+  septd .............................. convert list to string with SQL formating (parens, commas)
+  sql-list ........................... convert list of string, symbols or numbers to an SQL list
+    ;; EXCEL SUPPORT
+  get-xarray ......................... convert spreadsheet to xarray
+  xlval->sql ......................... convert single xarray value to SQL value
+  
+
+
+;; SQL
+  verify-statements .................. dump SQL statements formed by calls in body (& optionally, results)
+  statement .......................... construct SQL statement by interpolationg params into control string
+  sql->list .......................... execute statement after interpolating params into it, return results as list
+  column-definition .................. create column definition substatement based on *SCHEMA*
+  all-column-definitions ............. create all column def substatements for table
+  literal-column-defs ................ reform literal column definitions as SQL list
+  param-pattern ...................... create a pattern of SQL parameters
+    ;; CLAUSES
+  col ................................ create TABLE.COLUMN subclause
+  type-rewrites ...................... transform list elements to printed SQL values                 !?! XLVAL->SQL !?!
+  clause-from ........................ _
+  clause-left-join ................... _
+  clause-where ....................... _
+  clause-order-by .................... _
+  clause-group-by .................... _
+  clause-having ...................... _
+    ;; *DB* OPERATIONS
+  drop-table ......................... drop table from *DB*
+  drop-all-tables .................... drop all tables from *DB*
+  table-info ......................... return a list of column descriptions for table
+  table-columns ...................... list names of columns in table
+  db-info ............................ print description of every table in *db*
+  dump-table ......................... _
+  number-of-rows ..................... _
+  create-table ....................... create table from a list of column definitions
+  insert-into ........................ insert a list of values into listed columns of a table
+  select ............................. _
+
+
+
+;; IMPORT
+  resolve-insert ..................... insert values into table; trickle foreign values down into their respective tables
+  import-xarray ...................... go over value rows of xarray by groups, insert them into (temp) table
+    ;; TEMP -> FIX
+  ...
+    ;; OPERATIONS
+  import-xlsx ........................ _
+
+
+
+;; SIG
+  init-db ............................ _
+  start .............................. _
+
+
+
+;; SANDBOX
+  *ctest-iterations*
+  with-ctest-db
+  ctest-init
+  ctest-insert
+  ctest-dump
+  process
+  ctest-start
+  test01

@@ -64,7 +64,7 @@
    #:number-of-rows
    #:create-table
    #:insert-into
-   #:insert-new-into
+;   #:insert-new-into
 ;   #:
 
    ;; import.lisp

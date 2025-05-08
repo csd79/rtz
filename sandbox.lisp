@@ -18,17 +18,17 @@
 
 (defun ctest-init ()
   (with-ctest-db
-    (drop-all-tables *db*)
-    (create-table *db* 'teszt '((id integer primary key)
-                                (szoveg text not null)
-                                (szam integer)))))
+    (drop-all-tables)
+    (create-table 'teszt '((id integer primary key)
+                           (szoveg text not null)
+                           (szam integer)))))
 
 
 (defun ctest-insert (prefix)
   (let ((unitime (get-universal-time)))
     (with-ctest-db
-      (insert-into *db* 'teszt '(szoveg szam)
-;      (insert-into *db* 'teszt 'szoveg
+      (insert-into 'teszt '(szoveg szam) nil
+;      (insert-into 'teszt 'szoveg nil
                    (format nil "~a_~a" prefix unitime)
                    unitime))
     unitime))
@@ -36,8 +36,8 @@
 (defun ctest-dump ()
   (with-ctest-db
     (values
-     (dump-table 'teszt *db*)
-     (number-of-rows 'teszt *db*))))
+     (dump-table 'teszt)
+     (number-of-rows 'teszt))))
 ;     (sql->list *db* "select szoveg, count(*) from teszt"))))
 
 (defun process (obj)
@@ -52,17 +52,26 @@
       (dotimes (i *ctest-iterations*)
         (dump obj "~a~%" (ctest-insert prefix))
         (pstep obj)
-        (pabort obj))
-      (multiple-value-bind (dump number-of-rows)
+        (pabort obj)))))
+#|      (multiple-value-bind (dump number-of-rows)
           (ctest-dump)
 ;        (dump obj "~%~%~a~%~%Rekordok száma: ~a~%" big (second (first small))))))
         (dump obj "~%~%~a~%~%Rekordok száma: ~a~%" dump number-of-rows))))
   (with-ctest-db
-    (table-info 'teszt *db*)))
+    (table-info 'teszt)))|#
 
-(defun ctest-start ()
-  (let ((obj (make-instance 'wax-script :execute-fn #'process)))
-    (wax-execute obj :errorsink-on nil)))
+(defun ctest ()
+  (verify-statements (:execute nil)
+    (ctest-init)
+    (let ((obj (make-instance 'wax-script :execute-fn #'process)))
+      (wax-execute obj :errorsink-on nil)))
+#|  (multiple-value-bind (dump number-of-rows)
+      (ctest-dump)
+    (format t "~%~%~a~%~%Rekordok száma: ~a~%" dump number-of-rows))
+  (with-ctest-db
+    (table-info 'teszt)))|#
+;  (db-info))
+)
 
 
 ;;; ----------------------------------------------------------------------
@@ -74,6 +83,7 @@
 
 (defun test01 ()
   (with-db-context
-    (init-db *db*)
-    (let ((temp-table (import-xlsx *db* *test-data-1* "denes")))
-      (dump-table temp-table *db*))))
+    (init-db)
+    (let* ((*temp-name* "temp_denes_AbCdEf")
+           (temp-table  (import-xlsx *test-data-1* "denes")))
+      (dump-table temp-table))))

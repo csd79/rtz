@@ -9,10 +9,10 @@
 ;;; Initialize database
 
 
-(defun init-db (db)
-  (drop-all-tables db)
+(defun init-db ()
+  (drop-all-tables)
   (dolist (table (schema-tables))
-    (create-table db table)))
+    (create-table table)))
 
 
 ;;; ----------------------------------------------------------------------
