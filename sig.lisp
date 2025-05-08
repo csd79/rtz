@@ -10,6 +10,7 @@
 
 
 (defun init-db ()
+  "Initialize *DB* according to *SCHEMA*."
   (drop-all-tables)
   (dolist (table (schema-tables))
     (create-table table)))
@@ -20,4 +21,5 @@
 
 
 (defun start ()
+  "'main'"
   nil)

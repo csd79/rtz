@@ -28,7 +28,6 @@
   (let ((unitime (get-universal-time)))
     (with-ctest-db
       (insert-into 'teszt '(szoveg szam) nil
-;      (insert-into 'teszt 'szoveg nil
                    (format nil "~a_~a" prefix unitime)
                    unitime))
     unitime))
@@ -38,7 +37,6 @@
     (values
      (dump-table 'teszt)
      (number-of-rows 'teszt))))
-;     (sql->list *db* "select szoveg, count(*) from teszt"))))
 
 (defun process (obj)
   (let ((prefix (concatenate 'string
@@ -53,12 +51,6 @@
         (dump obj "~a~%" (ctest-insert prefix))
         (pstep obj)
         (pabort obj)))))
-#|      (multiple-value-bind (dump number-of-rows)
-          (ctest-dump)
-;        (dump obj "~%~%~a~%~%Rekordok száma: ~a~%" big (second (first small))))))
-        (dump obj "~%~%~a~%~%Rekordok száma: ~a~%" dump number-of-rows))))
-  (with-ctest-db
-    (table-info 'teszt)))|#
 
 (defun ctest ()
   (verify-statements (:execute nil)

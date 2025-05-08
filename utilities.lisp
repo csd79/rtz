@@ -253,21 +253,6 @@
 
 (defparameter *temp-name* nil)
 
-
-#|(defun unique-table-name (database infix)
-  "Create name containing INFIX that is not a name of any existing table in DATABASE."
-  ;; Worker function, generates string containing random characters and INFIX.
-  (flet ((worker (&optional (length 6))
-           (let ((charlist (loop for i from 0 below length collecting
-                                 (code-char (+ (random 23) 65)))))
-             (concatenate 'string "temp_"  infix "_"
-                          (coerce charlist 'string)))))
-    ;; Names of existing tables.
-    (let ((existing-tables (existing-tables database)))
-      ;; Keep calling WORKER until a uniq name is found.
-      (loop for name = (random-alphanumeric-string 6)
-            while (member name existing-tables :test #'string=)
-            finally return name))))|#
 (defun unique-table-name (infix)
   "Create name containing INFIX that is not a name of any existing table in DATABASE."
   (or *temp-name*
@@ -313,15 +298,6 @@
     (format nil "~a~{~a~^ ~}~a" open preproc close)))
 
 
-#|(defun sql-list (list &key (row nil))
-  "Turn a list a strings into az SQL list:
-  ('a b c' 'x y' '1 2 3') => '(a b c, x y, 1 2 3)'   "
-  (assert (typep list 'seq-of-strings-or-symbols)
-      (list)
-    "~a is not a list of strings" list)
-  (let ((open  (if row "(" ""))
-        (close (if row ")" "")))
-    (format nil "~a~{~a~^, ~}~a" open list close)))|#
 (defun sql-list (list &key (parens nil) (comma t))
   "Turn a list a strings, symbols or numbers into an SQL list:
   ('a b c' 'x y' '1 2 3') => '(a b c, x y, 1 2 3)'   "
@@ -355,14 +331,6 @@
       xarray)))
 
 
-#|(defun xlval->sql (value)
-  "Transform VALUE read from Excel for inserting into SQL."
-  (let ((date (parse-hudate value)))
-    (cond
-     ((empty-cell-p value) "NULL")                            ; empty cells will become NULLs
-     ((numberp value) value)                                  ; number
-     (date (apply #'format nil "~4,'0d-~2,'0d-~2,'0d" date))  ; dates will be formed as 2020-01-05
-     (t (format nil "'~a'" value)))))                         ; everything esle will be a 'string'|#
 (defun xlval->sql (value)
   "Transform VALUE read from Excel for inserting into SQL."
   (let ((date (parse-hudate value)))
@@ -370,35 +338,3 @@
      ((empty-cell-p value) "NULL")                            ; empty cells will become NULLs
      (date (apply #'format nil "~4,'0d-~2,'0d-~2,'0d" date))  ; dates will be formed as 2020-01-05
      (t value))))                                             ; everything esle will pass as-is
-
-
-#|
-(defun extract-sql-values (row)
-  "Turn values in an xarray ROW into a list a strings."
-  (loop for c from 0 below (xarray-width row)
-        for v = (xcref row c)
-        for d = (parse-hudate v)
-        collecting
-        (cond
-         ((empty-cell-p v) "NULL")                          ; empty cells will become NULLs
-         (d (apply #'format nil "~4,'0d-~2,'0d-~2,'0d" d))  ; dates will be formed as 2020-01-05
-         (t (format nil "'~a'" v)))))                       ; everything esle will be a 'string'
-
-
-(defun xarray-row->sql-values (row)
-  "Turn values in an xarray ROW into a row of SQL values: ('val1', 2, 2023-03-03)."
-  (format nil "(~{~a~^, ~})" (extract-sql-values row)))
-
-
-(defun collect-xarray-rows-as-sql-values (xarray)
-  "Turn XARRAY into a list of rows of SQL values."
-  (let ((results '()))
-    (do-xarows (row r xarray)
-      (push (xarray-row->sql-values row) results))
-    (nreverse results)))
-
-
-(defun array->sql-values (xarray)
-  "Turn XARRAY into a big string of rows of SQL values."
-  (format nil "~{~a~^, ~}" (collect-xarray-rows-as-sql-values xarray)))
-|#

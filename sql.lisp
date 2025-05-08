@@ -16,6 +16,7 @@
 (defparameter *statements-out* nil)
 
 (defmacro verify-statements ((&key (execute t)) &body body)
+  "After BODY, return a dump string containting statements (& results) generated in BODY."
   `(let ((*statements-out* (make-string-output-stream))
          (*exec/verify*    (if ,execute :execute-and-verify :verify)))
      ,@body
@@ -55,11 +56,6 @@
           (schema-columns table)))
 
 
-#|(defun literal-column-defs (sequence)
-  "Reform literal column definitions in SEQUENCE for SQL-LIST."
-  (mapcar #'(lambda (list)
-              (format nil "~{~a~^ ~}" list))
-          (rmapcar #'sql-name sequence)))|#
 (defun literal-column-defs (sequence)
   "Reform literal column definitions in SEQUENCE for SQL-LIST."
   (mapcar #'(lambda (element)
@@ -78,30 +74,6 @@
     (sql-list (loop for r from 0 below rows collecting one-row) :parens nil)))
 
 
-#|
-(defun parse-sql-elements (list)
-  "Convert a list of Lisp values into a list of SQL data that can be inserted into a statement."
-  ;; 12                             =>  "12"                     integer
-  ;; "str"                          =>  "'str'"                  string
-  ;; :2024-01-01                    =>  "2024-01-01              date
-  ;; column                         =>  "column"                 name
-  ;; (12 "str" column)              =>  "(12, 'str', column)     list of values
-  ;; (:lit id integer primary key)  =>  "id integer primary key"
-  (mapcar #'(lambda (element)
-              (typecase element
-                (integer (format nil "~d" element))
-                (string  (format nil "'~a'" element))
-                (keyword (symbol-name element))
-                (symbol  (symbol-name element))
-                (list    (if (eq (first element) :lit)
-                           (format nil "~{~a~^ ~}" (parse-sql-elements (rest element)))
-                           (format nil "(~{~a~^, ~})" (parse-sql-elements element))))))
-          list))
-|#
-
-
-
-
 ;;; ----------------------------------------------------------------------
 ;;; Clauses
 
@@ -111,26 +83,17 @@
   (let ((table (if table (format nil "~a." (sql-name table)) "")))
     (intern (string-upcase 
              (format nil "~a~a" table (sql-name column))))))
-#|(defmacro colmn (table column)
-  "Create sub-clause 'TABLE.COLUMN'."
-  `(format nil "~a.~a" (sql-name ',table) (sql-name ',column)))|#
 
 
-(defun type-rewrites (list)
+(defun type-rewrites (list) ;;;;;;;;;;;;;;;;;;;;;;;;;   XVLA->SQL????????????????????
   "Transform elements of LIST as printed SQL values."
   (mapcar #'(lambda (element)
               (typecase element
-;                (list (type-rewrites element))
                 (list (cond ((eq (first element) :vals)
                              (sql-list (rest element) :parens t))
                             ((eq (first element) :@vals)
                              (sql-list (rest element) :parens nil))
                             (t (type-rewrites element))))
-#|                 (if (eq (first element) :vals)
-                        (sql-list (rest element) :parens t)
-                        (type-rewrites element)))|#
-;                (symbol (str:replace-all "-" " " (symbol-name element)))
-;                (keyword (str:replace-all "-" "_" (symbol-name element)))
                 (symbol (symbol-name element))
                 (string (format nil "'~a'" element))
                 (t element)))
@@ -139,11 +102,6 @@
 
 (defun clause (name list)
   "General worker for generating clauses."
-#|  (format nil "~{~a~^ ~}"
-          (nconc (list (str:replace-all "-" " " (symbol-name name)))
-                 list)))|#
-#|  (septd (nconc (list (str:replace-all "-" " " (symbol-name name)))
-                list)))|#
   (let ((name-string (typecase name
                        (list (septd name :in-parens nil))
                        (symbol (symbol-name name))
@@ -167,18 +125,11 @@
 
 (defun clause-where (filter-list)
   "Generate WHERE clause."
-#|  (clause :where (mapcar #'(lambda (element)
-                             (typecase element
-                               (list (septd element :in-parens t))
-                               (string (format nil "'~a'" element))
-                               (t element)))
-                         filter-list)))|#
   (clause :where filter-list))
 
 
 (defun clause-order-by (columns)
   "Generate ORDER BY clause."
-;  (let ((/columns (if (listp columns) columns (list columns))))
   (let ((/columns (if (listp columns) columns (list columns))))
     (clause :order-by /columns)))
 
@@ -199,7 +150,6 @@
 
 (defun drop-table (name)
   "Drop table NAME in *DB*."
-;  (execute-to-list db (format nil "drop table ~a" name)))
   (sql->list (statement "drop table ~a" name)))
 
 
@@ -273,17 +223,6 @@
                           ;; Patern of ?s.
                           (param-pattern width height))
                values)))
-;               ))
-
-
-#|(defun insert-into (db table dest &rest values)
-  "Insert VALUES as new rows into COLUMNS of TABLE."
-  (insert-worker db table dest values nil))
-
-
-(defun insert-new-into (db table dest &rest values)
-  "Insert only new VALUES as rows into COLUMNS of TABLE."
-  (insert-worker db table dest values t))|#
 
 
 (defun select (column-list &key (distinct nil) (from nil) (left-join nil) (where nil)
@@ -302,10 +241,3 @@
                                   /distinct /columns /from /left-join
                                   /where /order-by /group-by /having)))))
     (sql->list statement inserts)))
-;    statement))
-#|    (list :from /from
-          :left-join /left-join
-          :where /where
-          :order-by /order-by
-          :group-by /group-by
-          :having /having)))|#
