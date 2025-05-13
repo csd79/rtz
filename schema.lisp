@@ -89,7 +89,8 @@
       :columns ((:column tank_kozpont_id
                  :desc (integer primary key))
                 (:column tank_kozpont
-                 :desc (text not null unique)))
+                 :desc (text not null unique)
+                 :import "Tankerületi központ neve"))
       :new-only t)
      
      (:table beosztasok
@@ -166,7 +167,7 @@
      (igenylesek      t_tipusok         t_tipus_id)
      (igenylesek      t_kapcs_eszkozok  t_kapcs_eszkoz_id)
      (igenylesek      t_allapotok       t_allapot_id)
-     (szerv_egysegek  tank_kozpontok    tank-kozpont_id)
+     (szerv_egysegek  tank_kozpontok    tank_kozpont_id)
      (szemelyek       varosok           varos_id)
      (varosok         orszagok          orszag_id))
 
@@ -200,5 +201,5 @@
             t_visszavonas_datuma))
 
 
-    :root 'igenylesek
+    :root igenylesek
     ))

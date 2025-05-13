@@ -23,7 +23,6 @@
                            (szoveg text not null)
                            (szam integer)))))
 
-
 (defun ctest-insert (prefix)
   (let ((unitime (get-universal-time)))
     (with-ctest-db
@@ -37,6 +36,11 @@
     (values
      (dump-table 'teszt)
      (number-of-rows 'teszt))))
+
+(defun ctest-info ()
+  (with-ctest-db 
+    (db-info)
+    (table-info 'teszt)))
 
 (defun process (obj)
   (let ((prefix (concatenate 'string
@@ -53,17 +57,17 @@
         (pabort obj)))))
 
 (defun ctest ()
-  (verify-statements (:execute nil)
-    (ctest-init)
-    (let ((obj (make-instance 'wax-script :execute-fn #'process)))
-      (wax-execute obj :errorsink-on nil)))
-#|  (multiple-value-bind (dump number-of-rows)
+  ;; Initialisation
+  (ctest-init)
+  ;; Run import process
+  (let ((obj (make-instance 'wax-script :execute-fn #'process)))
+    (wax-execute obj :errorsink-on nil))
+  ;; Dump db contents
+  (multiple-value-bind (dump number-of-rows)
       (ctest-dump)
     (format t "~%~%~a~%~%Rekordok száma: ~a~%" dump number-of-rows))
-  (with-ctest-db
-    (table-info 'teszt)))|#
-;  (db-info))
-)
+  ;; DB info
+  (ctest-info))
 
 
 ;;; ----------------------------------------------------------------------
@@ -74,8 +78,10 @@
 
 
 (defun test01 ()
-  (with-db-context
-    (init-db)
-    (let* ((*temp-name* "temp_denes_AbCdEf")
-           (temp-table  (import-xlsx *test-data-1* "denes")))
-      (dump-table temp-table))))
+;  (verify-statements (:execute t)
+    (with-db-context
+      (init-db)
+      (let ((obj (make-instance 'wax-script :execute-fn #'import-xlsx)))
+        (add-data-source obj :import *test-data-1*)
+        (wax-execute obj :errorsink-on nil))))
+;  )

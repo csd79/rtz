@@ -119,8 +119,16 @@
 
 (defun clause-left-join (table-many table-one column-many &optional (column-one nil))
   "Generate LEFT JOIN clause."
-  (clause :left-join (list table-one 'on (colmn table-many column-many) '=
-                           (colmn table-one (or column-one column-many)))))
+  (clause :left-join (list table-one 'on (col column-many table-many) '=
+                           (col (or column-one column-many) table-one))))
+
+
+(defun clauses-left-join (list)
+  "Generate multiple LEFT JOIN clauses."
+  (format nil "~{~a~^ ~}"
+          (mapcar #'(lambda (sublist)
+                      (apply #'clause-left-join sublist))
+                  list)))
 
 
 (defun clause-where (filter-list)
@@ -231,7 +239,7 @@
   (let* ((/distinct  (if distinct "distinct" ""))
          (/columns   (sql-list column-list))
          (/from      (if from (clause-from from) ""))
-         (/left-join (if left-join (apply #'clause-left-join from left-join) ""))
+         (/left-join (if left-join (clauses-left-join left-join) ""))
          (/where     (if where (clause-where where) ""))
          (/order-by  (if order-by (clause-order-by order-by) ""))
          (/group-by  (if group-by (clause-group-by group-by) ""))

@@ -33,6 +33,31 @@
           (coerce sequence 'list)))
 
 
+(defun synonym= (thing-1 thing-2 synonyms &key (test #'astring=))
+  "Compare 2 strings (or other things) using a synonyms dictionary."
+  (let ((candidates (apply #'append (remove-if-not
+                                     #'(lambda (row)
+                                         (member thing-1 row :test test))
+                                     synonyms))))
+    (member thing-2 candidates :test test)))
+
+
+(defun string-similarity (ref-string shaky-string &optional (test #'achar=))
+  "Calculate word similarity based on Levenshtein distance."
+  (- 1 (float (/ (edit-distance:distance
+                  (str:unwords (str:words ref-string))
+                  (str:unwords (str:words shaky-string))
+                  :test test)
+                 (length ref-string)))))
+
+(defparameter *string-similarity-threshold* 0.80)
+
+(defun string~ (ref-string shaky-string &key (test #'achar=) (threshold *string-similarity-threshold*))
+  "String similarity predicate."
+  (>= (string-similarity ref-string shaky-string test)
+      threshold))
+
+
 ;;; ----------------------------------------------------------------------
 ;;; Database context
 
