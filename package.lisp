@@ -21,6 +21,11 @@
    ;; UTILITIES.LISP
    #:string->symbol                       ; convert any string to symbol
    #:symbol->string                       ; convert any symbol to string
+   #:synonym=                             ; compare 2 things using a synonyms dictionary
+   #:string-similarity                    ; calculate word similarity based on Levenshtein distance
+   #:*string-similarity-threshold*        ; STRING~ similarity threshold
+   #:string~                              ; string similarity predicate
+       ;; db context
    #:with-db-context                      ; establishes DB connection with *TIMEOUT*,
                                           ; closes upon exiting when *AUTO-CLOSE*
    #:db-cleanup                           ; should be called upon exiting app
@@ -39,6 +44,7 @@
    #:root-table                           ; name of the root table
    #:new-only-p                           ; T if table should cointain unique records
    #:primary-key-p                        ; T if column is table's primary key
+   #:primary-key                          ; what column is the primary key of TABLE?
        ;; types
    #:sequencep                            ; 
    #:seq-of-strings-p                     ; 
@@ -61,7 +67,6 @@
    #:column-names                         ; parse column names from: list, string, xarray, vector, array
    #:sql-list                             ; convert list of string, symbols or numbers to an SQL list
        ;; Excel support
-   #:get-xarray                           ; convert spreadsheet to xarray
    #:xlval->sql                           ; convert single xarray value to SQL value
 ;   #:
 
@@ -83,10 +88,24 @@
    #:number-of-rows                       ; 
    #:create-table                         ; create table from a list of column definitions
    #:insert-into                          ; insert a list of values into listed columns of a table
-   #:select                               ; 
+   #:select                               ; basic SELECT
+       ;; select/
+   #:table                                ; what table does column appear in?
+   #:qualified-p                          ; does column contain table name prefix?
+   #:unqualify                            ; remove table name from column name
+   #:qualify                              ; add table name prefix to column name
+   #:where-column-p                       ; is element at index a column name in where clause
+   #:where-columns                        ; all column names in where clause
+   #:qualify-where                        ; ensure qualified column names in where clause
+   #:from-tables                          ; filter tables to the one that are not one-tables in schema
+   #:join-keys                            ; list key columns that lead from table to column (if any)
+   #:all-join-keys                        ; JOIN-KEYS for multiple routes
+   #:select/                              ; simplified SELECT
 ;   #:
 
    ;; IMPORT.LISP
+   #:import-xarray                        ; go over rows of source in OBJ by groups, import them into TABLE
+   #:temp->fix                            ; move data from TEMP into fix tables
    #:import-xlsx
 ;   #:
 

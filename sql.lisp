@@ -249,3 +249,187 @@
                                   /distinct /columns /from /left-join
                                   /where /order-by /group-by /having)))))
     (sql->list statement inserts)))
+
+
+;;; ----------------------------------------------------------------------
+;;; SELECT/
+
+
+(defun table (column &key (primary-key-allowed nil) (foreign-allowed nil))
+  "What table does COLUMN appear in?"
+  (let ((result  '())
+        (column/ (string->symbol column)))
+    (dolist (table (schema-tables))
+      (when (and (member column/ (schema-columns table))
+                 (or (and (not (primary-key-p column/ table))
+                          (not (foreign-p column/ table)))
+                     (and (primary-key-p column/ table)
+                          primary-key-allowed)
+                     (and (foreign-p column/ table)
+                          foreign-allowed)))
+        (push table result)))
+    (remove-duplicates result)))
+
+
+(defun qualified-p (column &key (strict nil) (missing-error nil))
+  "Does COLUMN contain table name prefix? When STRICT: does 'table.column' exist in the schema?"
+  (let* ((string (symbol->string column))
+         (words  (str:split "." string)))
+    (if (> (length words) 2)
+      (error "Invalid qualified column name (multiple table names??): ~a" column)
+      (and (= (length words) 2)
+           (or (and strict
+                    ;; Does 'table.column' exist in schema?
+                    (let ((table-exists  (member (string->symbol (first words)) (schema-tables)))
+                          (column-exists (member (string->symbol (second words))
+                                                 (schema-columns (first words)))))
+                      ;; If not and NON-STRICT-ERROR, signal error!
+                      (if (and missing-error
+                               (or (not table-exists)
+                                   (not column-exists)))
+                        (error "~a.~a does not exist in current schema." (first words) (second words))
+                        (and table-exists column-exists))))
+               (not strict))))))
+
+
+(defun unqualify (column)
+  "Remove table qualification from column name."
+  (if (qualified-p column)
+    ;; COLUMN is qualified:
+    (let* ((string (symbol->string column))
+           (words  (str:split "." string))
+           (result (case (length words)
+                     (2 (second words))
+                     (t (error "Invalid qualidied column name: ~a" column)))))
+      (typecase column
+        (symbol (string->symbol result))
+        (string (symbol->string result))))
+    ;; COLUMN is not qualified, return as it is:
+    column))
+
+
+(defun qualify (column &key (primary-key-allowed nil) (foreign-allowed nil))
+  "Qualify COLUMN name adding table prefix."
+  (let* ((column/ (unqualify column))
+         (table   (table column/
+                         :primary-key-allowed primary-key-allowed
+                         :foreign-allowed foreign-allowed))
+         (fn      (if (symbolp column/) #'string->symbol #'symbol->string)))
+    (if table
+      (funcall fn (apply #'format nil "~a.~a"
+                         (mapcar #'symbol->string (list (first table) column/))))
+      (error "~a: no such column in any table in schema." column))))
+
+
+(defun where-column-p (list index)
+  "Tel if LIST's element at INDEX is a column name (based on surroundings)?"
+  (let ((previous (when (> index 0) (nth (1- index) list)))
+        (next (when (< index (1- (length list))) (nth (1+ index) list))))
+    (or (zerop index)
+        (and previous (member previous '(or and not))
+             next     (member next '(= in like between < > <> != <= >=))))))
+
+
+(defun where-columns (tree)
+  "Extract column names from a WHERE clause tree."
+  (let ((columns '()))
+    (loop for index from 0 below (length tree)
+          for current = (nth index tree)
+          doing (if (consp current)
+                  (push (where-columns current) columns)
+                  (when (where-column-p tree index)
+                    (push (list current) columns))))
+    (mapcar #'unqualify (apply #'nconc columns))))
+
+
+(defun qualify-where (tree)
+  "Ensure qualified column names in a WHERE clause."
+  ;;  (beosztas = 1 and orszagok.orszag < 2 or (szerv_egys > 6 and tank_kozpont = 5) and
+  ;;      t_kapcs_eszkoz = 0)
+  ;;          ->
+  ;;  (BEOSZTASOK.BEOSZTAS = 1 AND ORSZAGOK.ORSZAG < 2 OR (SZERV_EGYSEGEK.SZERV_EGYS > 6 AND
+  ;;      TANK_KOZPONTOK.TANK_KOZPONT = 5) AND T_KAPCS_ESZKOZOK.T_KAPCS_ESZKOZ = 0)
+  (loop for index from 0 below (length tree)
+        for current  = (nth index tree) 
+        collecting (if (consp current)
+                     (qualify-where current)
+                     (if (and (where-column-p tree index)
+                              (not (qualified-p current :strict t :missing-error t)))
+                       (qualify (string->symbol current))
+                       current))))
+
+
+(defun from-tables (list)
+  "Filter LIST to keep only tables that are not one-tables in schema."
+  (let ((no-ones  (one-tables)))
+    (remove-if #'(lambda (table)
+                   (member table no-ones))
+               list)))
+
+
+(defun join-keys (root column)
+  "Return a list of key columns that lead from ROOT to COLUMN (if any)."
+  (labels ((f (root/ column/)
+             (if (member column/ (schema-columns root/))
+               ;; If ROOT table contains COLUMN, the chain ends.
+               (list t)
+               ;; Otherwise, if ROOT has possible left joins, evaluate them.
+               (first (remove nil (mapcar #'(lambda (record)
+                                              (let ((ret (f (second record) column/)))
+                                                (when ret
+                                                  (cons (third record) ret))))
+                                          (many-joins root/)))))))
+    (let ((result (f root column)))
+      (butlast result))))
+
+
+(defun all-join-keys (from-tables all-collumns)
+  (let ((result '()))
+    (dolist (column all-collumns)
+      (dolist (table from-tables)
+        (push (join-keys table column) result)))
+    (delete-duplicates (apply #'nconc (nreverse result))))) ;;;;;;;;;; kell nreverse??
+
+
+(defun find-join (key)
+  "Find the join that uses KEY."
+  (find-if #'(lambda (record)
+               (eq key (third record)))
+           (getf *schema* :connections)))
+
+
+(defun select/ (columns &key (where '()) (order-by '())) ;    (:group-by cols)       :having col
+  (let* ((q-columns      (mapcar #'(lambda (column)
+                                     (qualify column :primary-key-allowed t :foreign-allowed t))
+                                 columns))
+         (where-columns  (where-columns where))
+         (all-nq-columns (append columns where-columns))
+         (all-tables     (delete-duplicates (apply #'nconc (mapcar #'(lambda (column)
+                                                                       (table column
+                                                                              :primary-key-allowed t
+                                                                              :foreign-allowed t))
+                                                                   all-nq-columns))))
+         (from-tables    (from-tables all-tables))
+         (join-keys      (all-join-keys from-tables all-nq-columns))
+         (join-clauses   (mapcar #'find-join join-keys))
+         (qwhere         (qualify-where where)))
+    (format t "Q-COLUMNS: ~a~%~%" q-columns)
+    (format t "WHERE-COLUMNS: ~a~%~%" where-columns)
+    (format t "ALL-NQ-COLLUMNS: ~a~%~%" all-nq-columns)
+    (format t "ALL-TABLES: ~a~%~%" all-tables)
+    (format t "FROM-TABLES: ~a~%~%" from-tables)
+    (format t "JOIN-KEYS: ~a~%~%" join-keys)
+    (format t "Join clause: ~a~%~%" join-clauses)
+    (format t "WHERE: ~a~%~%" qwhere)
+    ;;;;;;;;;;;;;;;;;
+    (select columns :from from-tables :left-join join-clauses :where qwhere)
+    ))
+          
+
+#|
+                (select '(igenyles_id)
+              :from 'igenylesek
+              :left-join '((igenylesek szerv_egysegek szerv_egys_id)
+                           (szerv_egysegek tank_kozpontok tank_kozpont_id))
+              :where `(,(col 'tank_kozpont 'tank_kozpontok) = "Egri Tankerületi Központ")))
+|#

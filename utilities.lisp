@@ -125,6 +125,12 @@
                  (getf *schema* :connections)))
 
 
+#|(defun one-joins (table)
+  "List joins defined for one-table TABLE."
+  (remove-if-not #'(lambda (record) (eq (second record) (string->symbol table)))
+                 (getf *schema* :connections)))|#
+
+
 (defun all-connections (accessor)
   "List all individual elements of the connection field."
   (remove-duplicates
@@ -183,6 +189,13 @@
   "Returns T if COLUMN is TABLE's primary key."
   (search '(primary key)
           (getf (select-column column table) :desc)))
+
+
+(defun primary-key (table)
+  "What column is the primary key of TABLE?"
+  (find-if #'(lambda (column)
+               (primary-key-p column table))
+           (schema-columns table)))
 
 
 ;;; ----------------------------------------------------------------------
@@ -344,16 +357,6 @@
 
 ;;; ----------------------------------------------------------------------
 ;;; Excel support
-
-
-(defun get-xarray (excel-file)
-  "Return XARRAY containing the first sheet of EXCEL-FILE."
-  (with-property-accessors
-    (setf (property-accessors-on) t)
-    (let ((xarray (with-workbook (:open excel-file :read-only t :wsvars (wsheet) :close t)
-                    (read-xarray (used-range wsheet)))))
-      (setf (property-accessors-on) nil)
-      xarray)))
 
 
 (defun xlval->sql (value)
