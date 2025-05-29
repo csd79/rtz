@@ -201,5 +201,27 @@
             t_visszavonas_datuma))
 
 
+    :filters
+    (:main (tank_kozpont
+            szerv_egys
+            beosztas
+            ("Viselt név" viselt_csaladnev viselt_utonev_1 viselt_utonev_2)
+            ("Születési név" szul_csaladnev szul_utonev_1 szul_utonev_2)
+            ("Anya leánykori neve" anya_csaladnev anya_utonev_1 anya_utonev_2)
+            orszag
+            varos
+            szul_datuma
+            igazolvanyszam
+            telefon
+            email
+            t_sorozatszam
+            t_ervenyesseg_kezdete
+            t_ervenyesseg_vege
+            t_tipus
+            t_kapcs_eszkoz
+            t_allapot
+            t_visszavonas_datuma))
+
+    
     :root igenylesek
     ))

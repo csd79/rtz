@@ -111,49 +111,240 @@
 ;;; GUI
 
 
-(defparameter *d* '((1 "Apple" 10.5)
-                    (2 "Banana" 8.3)
-                    (3 "Cherry" 15.0)))
+(defun test02 ()
+  "Display imported data"
+  (with-db-context
+    (let* ((view    (view :main))
+           (headers (mapcar #'(lambda (label)
+                                (list :title (import/ label)))
+                            view))
+           (data    (select/ view)))
+      (capi:contain
+       (make-instance 'capi:multi-column-list-panel
+                      :columns headers
+                      :items data
+                      :title "Non-editable Spreadsheet"
+                      :interaction :extended-selection
+                      :item-print-functions #'(lambda (item)
+                                                (if (member item '("NULL" nil) :test #'equal)
+                                                  ""
+                                                  item))
+                      ;:filter t
+                      )))))
 
-(defun sp ()
-  (capi:contain
-   (make-instance 'capi:multi-column-list-panel
-                  :columns '((:title "ID" :width 50)
-                             (:title "Name" :width 100)
-                             (:title "Value" :width 80))
-                  :items *d*
-                  :title "Editable Spreadsheet"
-                  :filter t
-                  )))
 
-; list-panel     (szûrõ fejlécek)
-; modify-multi-column-list-panel-columns
+(defun test03 ()
+  "Display 100000 rows of random data"
+  (let* ((count 5)
+         (main (make-instance 'capi:multi-column-list-panel
+                              :columns (loop for h from 0 below 5 collecting
+                                             (list :title (random-alphanumeric-string 5)))
+                              :items (loop for r from 0 below 10000 collecting
+                                           (loop for i from 0 below 5 collecting
+                                                 (random-alphanumeric-string 80)))
+                              :title "Editable Spreadsheet"
+                              :interaction :extended-selection
+                              :column-function
+                              #'(lambda (row)
+#|                                  (if (zerop count)
+                                    (list nil nil nil nil nil)
+                                    (progn
+                                      (decf count)
+                                      row))|#
+                                  (push (first row) h)
+                                  (rest row)
+                                  )
+                              :item-print-functions
+                              #'(lambda (item)
+                                  (if (member item '(nil null))
+                                    ""
+                                    item))
+                              :items-get-function
+                              #'(lambda (seq idx) ; a tree-vel és a sor számával van meghívva, minden sor
+                                  (cons idx (elt seq idx))
+                                  )
+                              :filter t)))
+  (with-db-context
+    (capi:contain main)
+    main
+    )))
 
 
+(defun test04 ()
+  "Display imported data"
+  (with-db-context
+    (let* ((*sqlfn* #'sql->sv)
+           (view    (view :main))
+           (headers (mapcar #'(lambda (label)
+                                (list :title (import/ label)))
+                            view))
+           (data    (select/ view)))
+      (capi:contain
+       (make-instance 'capi:multi-column-list-panel
+                      :columns headers
+                      :items data
+                      :title "Non-editable Spreadsheet"
+                      :interaction :extended-selection
+                      :items-get-function #'svref
+                      :column-function #'(lambda (row)
+                                           (coerce row 'list))
+                      :item-print-functions #'(lambda (item)
+                                                (if (member item '("NULL" nil) :test #'equal)
+                                                  ""
+                                                  item))
+                      ;:filter t
+                      )))))
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(capi:define-interface click ()
-  ((keyword :initarg :right-click-selection-behavior))
+(capi:define-interface browser ()
+  ()
   (:panes
-   (list-panel
-    capi:list-panel
-    :items '("foo" "bar" "baz" "quux")
-    :visible-min-height '(:character 4)
-    :pane-menu 'my-menu
-    :interaction :multiple-selection
-    :right-click-selection-behavior keyword)))
- 
-(defun my-menu (pane data x y)
-  (declare (ignore pane x y))
-  (make-instance 'capi:menu
-                 :items (list "Hi There"
-                              ""
-                              "Here's the data:"
-                              data)))
- 
-(capi:display
-   (make-instance 'click
-                  :right-click-selection-behavior
-		  :clicked/restore/restore))
+   ;; Ide jönnek a szûrõk
+
+   (upper-button
+    capi:push-button
+    :accessor upper-button
+    :text "Felsõ gomb"
+    :callback-type :interface
+    :callback nil);(:initarg upper-button))
+
+   (disp
+    capi:title-pane
+    :accessor disp
+    :text "...")
+
+   (ssheet
+    capi:multi-column-list-panel
+    :accessor             ssheet
+    :columns              (:initarg headers)
+    :items                (:initarg data)
+;    :title                "Non-editable Spreadsheet"
+    :interaction          :extended-selection
+    :items-get-function   #'svref
+;    :column-function      #'(lambda (row)
+;                              (coerce row 'list))
+    :item-print-functions #'(lambda (item)
+                              (if (member item '("NULL" nil) :test #'equal)
+                                ""
+                                item))
+    :horizontal-scroll    t;nil
+    :vertical-scroll      :without-bar;nil
+    :filter               nil
+    )
+   ;; Ide jönnek az import/export/kilépés gombok
+
+   (lower-button
+    capi:push-button
+    :accessor lower-button
+    :text "Alsó gomb"
+    :callback-type :interface
+    :callback nil);(:initarg lower-button))
+   )
+  (:layouts
+   (upper capi:row-layout '(upper-button disp))
+   (mid capi:column-layout '(ssheet))
+   (lower capi:row-layout '(lower-button))
+   (borders capi:column-layout '(upper lower))
+   (default capi:column-layout '(upper mid lower))
+   )
+  (:default-initargs
+   :display-state :normal
+   :window-styles '(:resizable)
+   :layout 'default
+    :visible-min-width '(/ :screen-width 2)
+    :visible-max-width :screen-width
+    :visible-min-height '(/ :screen-height 2)
+    :visible-max-height :screen-height
+   ))
+
+
+(defun report (interface x y w h)
+  (setf (capi:title-pane-text (disp interface))
+        (format nil "~a  ~a  ~a  ~a" x y w h)))
+
+
+
+
+(defun screen-geometry (interface &optional (device-accessor #'first))
+  (let ((screen (capi:element-screen interface)))
+    (funcall device-accessor (capi:screen-internal-geometries screen))))
+
+
+(defun maximize (interface &optional (device-accessor #'first))
+  (destructuring-bind (x y width height)
+      (screen-geometry interface device-accessor)
+    (capi:execute-with-interface interface
+     'capi:set-top-level-interface-geometry interface
+     :x x :y y :width width :height height)))
+
+
+(defun empty-data (length &optional (number-of-rows 1))
+  (let ((results
+         (loop for i from 0 below number-of-rows collecting
+               (loop for j from 0 below length collecting
+                     ""))))
+    (coerce results 'simple-vector)))
+
+
+(defun modify-data (pane data)
+  (capi:execute-with-interface (capi:top-level-interface pane)
+   #'(lambda ()
+       (setf (capi:collection-items pane) data))))
+
+
+(defun number-of-rows (pane &optional (i 1) (j 5))
+  (let ((length    (length (slot-value pane 'capi::columns)))
+        (height-i  nil)
+        (height-j  nil)
+        (interface (capi:top-level-interface pane))
+        (borders   (make-instance 'browser :headers '(nil) :layout 'borders))
+        (safety    80))
+    (modify-data pane (empty-data length i))
+    (capi:with-geometry pane (setf height-i capi:%height%))
+    (modify-data pane (empty-data length j))
+    (loop doing (capi:with-geometry pane (setf height-j capi:%height%))
+          until (/= height-i height-j))
+    (let* ((a (/ (- height-j height-i)
+                 (- j i)))
+           (n (- height-i (* i a)))
+           (r nil)
+           (s nil))
+      ;; Calculating R
+      (capi:display borders)
+      (setf r (first (last (multiple-value-list
+                            (capi:top-level-interface-geometry borders)))))
+      (capi:destroy borders)
+      ;; Calculating S
+      (setf s (first (last (first (multiple-value-list (screen-geometry interface))))))
+      (floor (/ (- s n r safety) a)))))
+
+          
+
+
+(defun test05 ()
+  (with-db-context
+    (let* ((*sqlfn* #'sql->sv)
+           (view    (view :main))
+           (headers (mapcar #'(lambda (label)
+                                (list :title (import/ label)))
+                            view))
+           (data    (select/ view :where '(tank_kozpont = "Egri Tankerületi Központ")))
+;           (data    (select/ view))
+;           (data    (empty-data (length headers) 1))
+           (main    (make-instance 'browser
+                                   :headers headers
+                                   :data data
+                                   :layout 'default
+                                   :geometry-change-callback 'report   ;   ::::-----)))))))
+                                   ))
+           )
+      (capi:display main)
+;      (maximize main)
+
+;      (number-of-rows (ssheet main))
+
+      )))
+      

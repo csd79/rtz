@@ -1,11 +1,3 @@
-KÖV. LÉPÉSEK:
- temp -> táblák import (minden egyszerre)
- lekérdezés táblákból és exportálás Excelbe
- Grafikus felület: böngészés, import/export gombok
-
-
-
-
 
 Legyen egy állítható várakozási idő. Ennek leteltével jelenjen meg egy üzenet hogy újra próbálkozás kezdődik 10..9 mp múlva, hacsak meg nem szakítjuk, és érdemes ellenőrizni a hálózatot vagy a többi felhasználót.
 
@@ -32,3 +24,31 @@ Tanúsítványhoz kapcsolódó eszköz
 Tanúsítvány állapota
 Visszavonva
 Visszavonás időpontja
+
+
+
+
+
+
+
+
+
+
+
+(LAST-INSERT-ROWID *db*)  =>  a kapcsolaton utoljára beillesztett sor azonosítója.
+
+Paging: OFFSET, LIMIT
+
+collection (superclass)
+  :print-function
+  :items-count-function
+  :items-get-function             ; SVREF is default???
+  :items-map-function
+
+(CHOICE-SELECTED-ITEMS ...)
+
+simple-pane
+  scrollozás követéséhez
+    simple-pane-scroll-callback
+	simple-pane-horizontal-scroll
+    simple-pane-vertical-scroll

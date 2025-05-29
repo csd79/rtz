@@ -125,12 +125,6 @@
                  (getf *schema* :connections)))
 
 
-#|(defun one-joins (table)
-  "List joins defined for one-table TABLE."
-  (remove-if-not #'(lambda (record) (eq (second record) (string->symbol table)))
-                 (getf *schema* :connections)))|#
-
-
 (defun all-connections (accessor)
   "List all individual elements of the connection field."
   (remove-duplicates
@@ -196,6 +190,16 @@
   (find-if #'(lambda (column)
                (primary-key-p column table))
            (schema-columns table)))
+
+
+(defun view (view)
+  "Return view named VIEW."
+  (getf (getf *schema* :views) view))
+
+
+(defun import/ (column)
+  "Return import header for COLUMN."
+  (column-import column (first (table column))))
 
 
 ;;; ----------------------------------------------------------------------

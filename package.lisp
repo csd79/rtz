@@ -45,6 +45,8 @@
    #:new-only-p                           ; T if table should cointain unique records
    #:primary-key-p                        ; T if column is table's primary key
    #:primary-key                          ; what column is the primary key of TABLE?
+   #:view                                 ; return view
+   #:import/                              ; return import header for column
        ;; types
    #:sequencep                            ; 
    #:seq-of-strings-p                     ; 
@@ -74,6 +76,8 @@
    #:verify-statements                    ; dump SQL statements (& results) formed by calls in body
    #:statement                            ; make SQL statement by interpolationg params into control string
    #:sql->list                            ; execute statement return results as list
+   #:sql->sv                              ; execute statement return results as vector
+   #:*sqlfn*                              ; function to call for sending SQL statements to db
    #:column-definition                    ; create column definition substatement based on *SCHEMA*
    #:all-column-definitions               ; create all column def substatements for table
    #:literal-column-defs                  ; reform literal column definitions as SQL list

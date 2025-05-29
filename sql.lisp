@@ -42,6 +42,22 @@
     result))
 
 
+(defun sql->sv (statement &optional (params nil))
+  "Execute statemtnt constructed from CONTROL-STRING and PARAMS,
+   return results as a vector of lists."
+  (let* ((tree   (sql->list statement params))
+         (length (length tree))
+         (result (make-array length)))
+    (loop for i from 0 below length
+          for e in tree doing
+          (setf (svref result i) e))
+;                (coerce e 'simple-vector)))
+    result))
+
+
+(defparameter *sqlfn* #'sql->list)
+
+
 (defun column-definition (column table)
   "Create column definition SQL substatement."
   (str:unwords
@@ -158,7 +174,8 @@
 
 (defun drop-table (name)
   "Drop table NAME in *DB*."
-  (sql->list (statement "drop table ~a" name)))
+;  (sql->list (statement "drop table ~a" name)))
+  (funcall *sqlfn* (statement "drop table ~a" name)))
 
 
 (defun drop-all-tables ()
@@ -169,7 +186,8 @@
 
 (defun table-info (table)
   "Return a list of columns descriptions for TABLE."
-  (sql->list (statement "pragma table_info(~a)" table)))
+;  (sql->list (statement "pragma table_info(~a)" table)))
+  (funcall *sqlfn* (statement "pragma table_info(~a)" table)))
 
 
 (defun table-columns (table)
@@ -188,17 +206,19 @@
   "Return the complete contents of TABLE in the form of a list."
   (let ((columns (table-columns table)))
     (if columns
-      (sql->list (statement "select ~a from ~a"
-                            (sql-list columns :parens nil)
-                            table))
+;      (sql->list (statement "select ~a from ~a"
+      (funcall *sqlfn* (statement "select ~a from ~a"
+                                  (sql-list columns :parens nil)
+                                  table))
       (error "Table not found in db: ~a." table))))
 
 
 (defun number-of-rows (table)
   "Return the number of rows in TABLE."
-  (second (first (sql->list (statement "select ~s, count(*) from ~a"
-                                       (first (table-columns table))
-                                       table)))))
+;  (second (first (sql->list (statement "select ~s, count(*) from ~a"
+  (second (first (funcall *sqlfn* (statement "select ~s, count(*) from ~a"
+                                             (first (table-columns table))
+                                             table)))))
 
 
 (defun create-table (name &optional (cols-arg nil))
@@ -208,7 +228,8 @@
                    (seq-of-strings-or-symbols         (column-names cols-arg))
                    (t                                 (all-column-definitions name)))))
     (if columns
-      (sql->list (statement "create table ~a ~a" name (sql-list columns :parens t)))
+;      (sql->list (statement "create table ~a ~a" name (sql-list columns :parens t)))
+      (funcall *sqlfn* (statement "create table ~a ~a" name (sql-list columns :parens t)))
       (error "Couldn't create table ~a: list of columns is empty." name))))
 
 
@@ -222,15 +243,16 @@
     (unless (= length (* width height))
       (error "Numberof columns (~a) is in conflict with number of values (~a)." width length))
     ;; Operation.
-    (sql->list (statement "insert ~ainto ~a ~a values ~a" ignore table
-                          ;; List of destination columns.
-                          (sql-list (if (= width 1)
-                                      (list dest)
-                                      dest)
-                                    :parens t)
-                          ;; Patern of ?s.
-                          (param-pattern width height))
-               values)))
+;    (sql->list (statement "insert ~ainto ~a ~a values ~a" ignore table
+    (funcall *sqlfn* (statement "insert ~ainto ~a ~a values ~a" ignore table
+                                ;; List of destination columns.
+                                (sql-list (if (= width 1)
+                                            (list dest)
+                                            dest)
+                                          :parens t)
+                                ;; Patern of ?s.
+                                (param-pattern width height))
+             values)))
 
 
 (defun select (column-list &key (distinct nil) (from nil) (left-join nil) (where nil)
@@ -248,7 +270,8 @@
                        (statement "select ~a ~a ~a ~a ~a ~a ~a ~a"
                                   /distinct /columns /from /left-join
                                   /where /order-by /group-by /having)))))
-    (sql->list statement inserts)))
+;    (sql->list statement inserts)))
+    (funcall *sqlfn* statement inserts)))
 
 
 ;;; ----------------------------------------------------------------------
@@ -383,12 +406,26 @@
       (butlast result))))
 
 
+(defun sort-join-keys (list)
+  "Sort keys in hierarchical order."
+  (let ((all   (all-connections #'identity))
+        (manys (many-tables)))
+    (labels ((dig (key)
+               (let ((many (first (find key all :key #'third))))
+                 (if many
+                   (1+ (dig (third (find many all :key #'second))))
+                   0))))
+      (sort list #'(lambda (x y) (<= (dig x) (dig y)))))))
+
+
 (defun all-join-keys (from-tables all-collumns)
+  "JOIN-KEYS for multiple routes."
   (let ((result '()))
     (dolist (column all-collumns)
       (dolist (table from-tables)
         (push (join-keys table column) result)))
-    (delete-duplicates (apply #'nconc (nreverse result))))) ;;;;;;;;;; kell nreverse??
+;    (delete-duplicates (apply #'nconc (nreverse result))))) ;;;;;;;;;; kell nreverse??
+    (sort-join-keys (delete-duplicates (apply #'nconc result)))))
 
 
 (defun find-join (key)
@@ -398,10 +435,11 @@
            (getf *schema* :connections)))
 
 
-(defun select/ (columns &key (where '()) (order-by '())) ;    (:group-by cols)       :having col
-  (let* ((q-columns      (mapcar #'(lambda (column)
-                                     (qualify column :primary-key-allowed t :foreign-allowed t))
-                                 columns))
+(defun select/ (columns &key (where '())); (order-by '())) ;    (:group-by cols)       :having col
+  (let* (
+;         (q-columns      (mapcar #'(lambda (column)
+;                                     (qualify column :primary-key-allowed t :foreign-allowed t))
+;                                 columns))
          (where-columns  (where-columns where))
          (all-nq-columns (append columns where-columns))
          (all-tables     (delete-duplicates (apply #'nconc (mapcar #'(lambda (column)
@@ -413,6 +451,7 @@
          (join-keys      (all-join-keys from-tables all-nq-columns))
          (join-clauses   (mapcar #'find-join join-keys))
          (qwhere         (qualify-where where)))
+#|
     (format t "Q-COLUMNS: ~a~%~%" q-columns)
     (format t "WHERE-COLUMNS: ~a~%~%" where-columns)
     (format t "ALL-NQ-COLLUMNS: ~a~%~%" all-nq-columns)
@@ -421,15 +460,6 @@
     (format t "JOIN-KEYS: ~a~%~%" join-keys)
     (format t "Join clause: ~a~%~%" join-clauses)
     (format t "WHERE: ~a~%~%" qwhere)
-    ;;;;;;;;;;;;;;;;;
+|#
     (select columns :from from-tables :left-join join-clauses :where qwhere)
     ))
-          
-
-#|
-                (select '(igenyles_id)
-              :from 'igenylesek
-              :left-join '((igenylesek szerv_egysegek szerv_egys_id)
-                           (szerv_egysegek tank_kozpontok tank_kozpont_id))
-              :where `(,(col 'tank_kozpont 'tank_kozpontok) = "Egri Tankerületi Központ")))
-|#
