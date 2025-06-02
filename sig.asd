@@ -1,7 +1,7 @@
 (defsystem "sig"
   :description "Application tracker for e-signature certifications"
   :author      "Denes Cselovszki <denes.cselovszky@gmail.com>"
-  :version     "0.13"
+  :version     "0.14"
   :depends-on  ("cffi" "iterate" "cl-ppcre" "local-time" "str" "achar" "edit-distance" "ccom3" "msoffice" "sqlite" "wax")
   :serial      t
   :components  ((:file "package")

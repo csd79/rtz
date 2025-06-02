@@ -169,6 +169,16 @@
   (clause :having filter-list))
 
 
+(defun clause-limit (value)
+  "Generate LIMIT clause."
+  (clause :limit (list value)))
+
+
+(defun clause-offset (value)
+  "Generate OFFSET clause."
+  (clause :offset (list value)))
+
+
 ;;; ----------------------------------------------------------------------
 ;;; Operations
 
@@ -256,8 +266,9 @@
              values)))
 
 
-(defun select (columns &key (distinct nil) (from nil) (left-join nil) (where nil)
-                            (order-by nil) (group-by nil) (having nil) (inserts '()))
+(defun select (columns &key (distinct nil) (from nil)     (left-join nil) (where nil)
+                            (order-by nil) (group-by nil) (having nil)
+                            (limit nil)    (offset nil)   (inserts '()))
   "Select rows."
   (let* ((/distinct  (if distinct "distinct" ""))
          (/columns   (sql-list columns))
@@ -267,10 +278,13 @@
          (/order-by  (if order-by (clause-order-by order-by) ""))
          (/group-by  (if group-by (clause-group-by group-by) ""))
          (/having    (if having (clause-having having) ""))
+         (/limit     (if limit (clause-limit limit) ""))
+         (/offset    (if offset (clause-offset offset) ""))
          (statement  (str:unwords (str:words
-                       (statement "select ~a ~a ~a ~a ~a ~a ~a ~a"
+                       (statement "select ~a ~a ~a ~a ~a ~a ~a ~a ~a ~a"
                                   /distinct /columns /from /left-join
-                                  /where /order-by /group-by /having)))))
+                                  /where /order-by /group-by /having
+                                  /limit /offset)))))
 ;    (sql->list statement inserts)))
     (funcall *sqlfn* statement inserts)))
 
@@ -453,10 +467,15 @@
   
 
 
-(defun select/ (columns &key (where '())); (order-by '())) ;    (:group-by cols)       :having col
+(defun select/ (columns &key (where '()) (limit nil) (offset nil)); (order-by '())) ; (:group-by cols) :having col
   (multiple-value-bind (from-tables join-clauses qwhere)
       (frills columns where)
-    (select columns :from from-tables :left-join join-clauses :where qwhere)))
+    (apply #'select
+           (append (list columns :from from-tables :left-join join-clauses :where qwhere)
+                   (when limit
+                     (list :limit limit))
+                   (when offset
+                     (list :offset offset))))))
 
 ;;;;;;;;;;;;;;;
 

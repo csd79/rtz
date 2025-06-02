@@ -70,3 +70,60 @@ Egyébként több példány is létezhet belőle, és az utoljára indított dol
 
 ---
 Lehetne egyszerre két db: egy aktív és egy archív. Az archív lehetne zippelve. Bizonyos időközönként hozzáadnánk az aktívból azokat a rekordokat, amelyek már nem lesznek módosítva. 7zip-pel kb 20%-ra lehet összenyomni a db-t, így sima zippel is jelentős lehet a helymegtakarítás. A program a kettőt transzparens módon egyként mutatná. Lenne benne egy admin funkció ami migrálja a kiválasztott rekordokat az archívumba.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+====================
+BROWSER
+
+Legyen két cache:
+  DATA-OVER
+  DATA-MAIN
+  DATA-UNDER
+
+A méretük legyen 50 000 sor.
+Az átfedés legyen közöttük a tényleges képernyősorszám kétszerese.
+Képernyősorszám jelenleg 74 teljes képernyőn.
+
+Kezdetben a MAIN 0-tól kezdődik, az OVER üres, a SHADOW pedig (- 50001 74 74) = 49853-től.
+
+Felfelé görgetéskor:
+  ha a pozíció MAIN-ben az átfedésen belül van és a MAIN kezdete nagyobb mint alsó határ (0):
+    az OVER-ből MAIN lesz
+	a MAIN-ből UNDER lesz
+	az UNDER-ből OVER lesz és fel kell tölteni lekérdezéssel
+
+Lefelé gorgetéskor:
+  ha a pozíció a MAIN alsó átfedésében van és a MAIN vége kisebb mint a felső határ (?)
+    az UNDER-ből MAIN lesz
+	a MAIN-ből OVER lesz
+	az OVER-ből UNDER lesz, és fel kell tölteni lekérdezéssel
+
+
+===========================
+INICIALIZÁLÁS
+
+DATA-COUNT = count                                                       ; jelen lekérdzés hány soros?
+DATA-MAIN  = select FIRST-ROW offsettől (min DATA-LIMIT DATA-COUNT)      ; lekérdezünk a fő bufferbe a buffer limit vagy a lekérdezés méretéig (amelyik kisebb)
+DATA-UNDER = ha DATA-COUNT > DATA-LIMIT: select (- DATA-LIMIT (* ROW-COUNT 2)) offsettől (mint DATA-LIMIT DATA-COUNT)-ig
+DATA-OVER  = nil                                                         ; az elején vagyunk, nincs fölötte semmi
+SELECTION  = '()
+
+
+
