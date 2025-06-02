@@ -174,31 +174,32 @@
 
     :views
     ;; :MAIN is for browsing & exporting to Excel
-    (:main (tank_kozpont
-            szerv_egys
-            beosztas
-            viselt_csaladnev
-            viselt_utonev_1
-            viselt_utonev_2
-            szul_csaladnev
-            szul_utonev_1
-            szul_utonev_2
-            anya_csaladnev
-            anya_utonev_1
-            anya_utonev_2
-            orszag
-            varos
-            szul_datuma
-            igazolvanyszam
-            telefon
-            email
-            t_sorozatszam
-            t_ervenyesseg_kezdete
-            t_ervenyesseg_vege
-            t_tipus
-            t_kapcs_eszkoz
-            t_allapot
-            t_visszavonas_datuma))
+    (:main ((igenyles_id "ID")
+            (tank_kozpont "Tankerületi központ")
+            (szerv_egys "Intézmény")
+            (beosztas "Beosztás")
+            (viselt_csaladnev "Családnév")
+            (viselt_utonev_1 "1. utónév")
+            (viselt_utonev_2 "2. utónév")
+            (szul_csaladnev "Szül. családnév")
+            (szul_utonev_1 "Szül. 1. utónév")
+            (szul_utonev_2 "Szül. 2. utónév")
+            (anya_csaladnev "Anya leánykori családnév")
+            (anya_utonev_1 "Anya leánykori 1. utónév")
+            (anya_utonev_2 "Anya leánykori 2. utónév")
+            (orszag "Születési ország")
+            (varos "Születési város")
+            (szul_datuma "Születési dátum")
+            (igazolvanyszam "Igazolványszám")
+            (telefon "Telefonszám")
+            (email "E-mail cím")
+            (t_sorozatszam "Tanúsítvány sorozatszám")
+            (t_ervenyesseg_kezdete "Tanúsítvány érvényesség kedzete")
+            (t_ervenyesseg_vege "Tanúsítvány érvényesség vége")
+            (t_tipus "Tanúsítvány típusa")
+            (t_kapcs_eszkoz "Kapcsolódó eszköz")
+            (t_allapot "Tanúsítvány státusza")
+            (t_visszavonas_datuma "Visszavonás dátuma"))) 
 
 
     :filters

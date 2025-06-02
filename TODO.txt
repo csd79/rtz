@@ -52,3 +52,21 @@ simple-pane
     simple-pane-scroll-callback
 	simple-pane-horizontal-scroll
     simple-pane-vertical-scroll
+
+
+
+
+
+
+
+Importáláskor jelenleg csak a szöveg formában beírt dátumoat tudja beolvasni
+TK szinonímákat nem ismer fel (csak "Tankerületi Központ")
+Ha az iskola nevében előforsul "  " dupla space, akkor az igenylesek insertben ()-ként jelenik meg!
+A *FOREIGN-SETTLEMENTS*-ben van egy szerbiai Baja. Mivel név szerint azonosítja a várost, és a magyar települések között is szerepel, személy INSERT-ben () lett a város.
+
+Jó lenne ha a progress ablak kezeletlen hiba esetén becsukódna.
+Egyébként több példány is létezhet belőle, és az utoljára indított dolgai vezérlik a régit is. Ez nem jó, egyedi azonosítás kellene ezeknek az ablakoknak.
+
+
+---
+Lehetne egyszerre két db: egy aktív és egy archív. Az archív lehetne zippelve. Bizonyos időközönként hozzáadnánk az aktívból azokat a rekordokat, amelyek már nem lesznek módosítva. 7zip-pel kb 20%-ra lehet összenyomni a db-t, így sima zippel is jelentős lehet a helymegtakarítás. A program a kettőt transzparens módon egyként mutatná. Lenne benne egy admin funkció ami migrálja a kiválasztott rekordokat az archívumba.

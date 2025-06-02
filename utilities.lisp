@@ -197,6 +197,16 @@
   (getf (getf *schema* :views) view))
 
 
+(defun view-columns (view)
+  "Return columns of VIEW."
+  (mapcar #'first (view view)))
+
+
+(defun view-labels (view)
+  "Return column labels of VIEW."
+  (mapcar #'second (view view)))
+
+
 (defun import/ (column)
   "Return import header for COLUMN."
   (column-import column (first (table column))))

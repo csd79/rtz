@@ -55,7 +55,8 @@
     result))
 
 
-(defparameter *sqlfn* #'sql->list)
+;(defparameter *sqlfn* #'sql->list)
+(defparameter *sqlfn* #'sql->sv)
 
 
 (defun column-definition (column table)
@@ -255,11 +256,11 @@
              values)))
 
 
-(defun select (column-list &key (distinct nil) (from nil) (left-join nil) (where nil)
-                                (order-by nil) (group-by nil) (having nil) (inserts '()))
+(defun select (columns &key (distinct nil) (from nil) (left-join nil) (where nil)
+                            (order-by nil) (group-by nil) (having nil) (inserts '()))
   "Select rows."
   (let* ((/distinct  (if distinct "distinct" ""))
-         (/columns   (sql-list column-list))
+         (/columns   (sql-list columns))
          (/from      (if from (clause-from from) ""))
          (/left-join (if left-join (clauses-left-join left-join) ""))
          (/where     (if where (clause-where where) ""))
@@ -435,12 +436,9 @@
            (getf *schema* :connections)))
 
 
-(defun select/ (columns &key (where '())); (order-by '())) ;    (:group-by cols)       :having col
-  (let* (
-;         (q-columns      (mapcar #'(lambda (column)
-;                                     (qualify column :primary-key-allowed t :foreign-allowed t))
-;                                 columns))
-         (where-columns  (where-columns where))
+(defun frills (columns where)
+  "Calculate from tables, join clauses and the proper where clause."
+  (let* ((where-columns  (where-columns where))
          (all-nq-columns (append columns where-columns))
          (all-tables     (delete-duplicates (apply #'nconc (mapcar #'(lambda (column)
                                                                        (table column
@@ -451,15 +449,19 @@
          (join-keys      (all-join-keys from-tables all-nq-columns))
          (join-clauses   (mapcar #'find-join join-keys))
          (qwhere         (qualify-where where)))
-#|
-    (format t "Q-COLUMNS: ~a~%~%" q-columns)
-    (format t "WHERE-COLUMNS: ~a~%~%" where-columns)
-    (format t "ALL-NQ-COLLUMNS: ~a~%~%" all-nq-columns)
-    (format t "ALL-TABLES: ~a~%~%" all-tables)
-    (format t "FROM-TABLES: ~a~%~%" from-tables)
-    (format t "JOIN-KEYS: ~a~%~%" join-keys)
-    (format t "Join clause: ~a~%~%" join-clauses)
-    (format t "WHERE: ~a~%~%" qwhere)
-|#
-    (select columns :from from-tables :left-join join-clauses :where qwhere)
-    ))
+    (values from-tables join-clauses qwhere)))
+  
+
+
+(defun select/ (columns &key (where '())); (order-by '())) ;    (:group-by cols)       :having col
+  (multiple-value-bind (from-tables join-clauses qwhere)
+      (frills columns where)
+    (select columns :from from-tables :left-join join-clauses :where qwhere)))
+
+;;;;;;;;;;;;;;;
+
+(defun count/ (columns &key (where '()))
+  (multiple-value-bind (from-tables join-clauses qwhere)
+      (frills columns where)
+    (let ((result (select '("count(*)") :from from-tables :left-join join-clauses :where qwhere)))
+      (first (elt result 0)))))

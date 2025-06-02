@@ -144,7 +144,7 @@
                        summing (xarray-indexed-height (source-data obj key))
                        doing   (wax::purge-data-source obj key)))
            (step-import 1)
-           (step-fix (* step-import 4)))
+           (step-fix (* step-import 6)))
       ;; Setf progress limit according to number of lines
       (setf (pstep-limit obj) (* rows (+ step-import step-fix)))
       ;; Import each data source via separate temp tables:

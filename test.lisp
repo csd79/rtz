@@ -1503,7 +1503,7 @@
     ("Nagybánya"        "Baia Mare"         "Románia"                 0.612732267)
     ("Csíkszereda"      "Miercurea Ciuc"    "Románia"                 0.633105406)
     ("Sepsiszentgyörgy" "Sfantu Gheorghe"   "Románia"                 0.652696000)
-    ("Baja"             "Baja"              "Szerbia"                 0.672043736)
+;    ("Baja"             "Baja"              "Szerbia"                 0.672043736)
     ("Szászrégen"       "Reghin"            "Románia"                 0.691116232)
     ("Topolya"          "Backa Topola"      "Szerbia"                 0.708645227)
     ("Magyarkanizsa"    "Kanjiza"           "Szerbia"                 0.725845013)
