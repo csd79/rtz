@@ -155,8 +155,8 @@
 
 (defun clause-order-by (columns)
   "Generate ORDER BY clause."
-  (let ((/columns (if (listp columns) columns (list columns))))
-    (clause :order-by /columns)))
+  (let ((columns2 (if (listp columns) columns (list columns))))
+    (clause :order-by columns2)))
 
 
 (defun clause-group-by (column)
@@ -270,40 +270,40 @@
                             (order-by nil) (group-by nil) (having nil)
                             (limit nil)    (offset nil)   (inserts '()))
   "Select rows."
-  (let* ((/distinct  (if distinct "distinct" ""))
-         (/columns   (sql-list columns))
-         (/from      (if from (clause-from from) ""))
-         (/left-join (if left-join (clauses-left-join left-join) ""))
-         (/where     (if where (clause-where where) ""))
-         (/order-by  (if order-by (clause-order-by order-by) ""))
-         (/group-by  (if group-by (clause-group-by group-by) ""))
-         (/having    (if having (clause-having having) ""))
-         (/limit     (if limit (clause-limit limit) ""))
-         (/offset    (if offset (clause-offset offset) ""))
+  (let* ((distinct*  (if distinct "distinct" ""))
+         (columns*   (sql-list columns))
+         (from*      (if from (clause-from from) ""))
+         (left-join* (if left-join (clauses-left-join left-join) ""))
+         (where*     (if where (clause-where where) ""))
+         (order-by*  (if order-by (clause-order-by order-by) ""))
+         (group-by*  (if group-by (clause-group-by group-by) ""))
+         (having*    (if having (clause-having having) ""))
+         (limit*     (if limit (clause-limit limit) ""))
+         (offset*    (if offset (clause-offset offset) ""))
          (statement  (str:unwords (str:words
                        (statement "select ~a ~a ~a ~a ~a ~a ~a ~a ~a ~a"
-                                  /distinct /columns /from /left-join
-                                  /where /order-by /group-by /having
-                                  /limit /offset)))))
+                                  distinct* columns* from* left-join*
+                                  where* order-by* group-by* having*
+                                  limit* offset*)))))
 ;    (sql->list statement inserts)))
     (funcall *sqlfn* statement inserts)))
 
 
 ;;; ----------------------------------------------------------------------
-;;; SELECT/
+;;; SELECT-SIMPLE
 
 
 (defun table (column &key (primary-key-allowed nil) (foreign-allowed nil))
   "What table does COLUMN appear in?"
   (let ((result  '())
-        (column/ (string->symbol column)))
+        (column* (string->symbol column)))
     (dolist (table (schema-tables))
-      (when (and (member column/ (schema-columns table))
-                 (or (and (not (primary-key-p column/ table))
-                          (not (foreign-p column/ table)))
-                     (and (primary-key-p column/ table)
+      (when (and (member column* (schema-columns table))
+                 (or (and (not (primary-key-p column* table))
+                          (not (foreign-p column* table)))
+                     (and (primary-key-p column* table)
                           primary-key-allowed)
-                     (and (foreign-p column/ table)
+                     (and (foreign-p column* table)
                           foreign-allowed)))
         (push table result)))
     (remove-duplicates result)))
@@ -348,14 +348,14 @@
 
 (defun qualify (column &key (primary-key-allowed nil) (foreign-allowed nil))
   "Qualify COLUMN name adding table prefix."
-  (let* ((column/ (unqualify column))
-         (table   (table column/
+  (let* ((column* (unqualify column))
+         (table   (table column*
                          :primary-key-allowed primary-key-allowed
                          :foreign-allowed foreign-allowed))
-         (fn      (if (symbolp column/) #'string->symbol #'symbol->string)))
+         (fn      (if (symbolp column*) #'string->symbol #'symbol->string)))
     (if table
       (funcall fn (apply #'format nil "~a.~a"
-                         (mapcar #'symbol->string (list (first table) column/))))
+                         (mapcar #'symbol->string (list (first table) column*))))
       (error "~a: no such column in any table in schema." column))))
 
 
@@ -407,16 +407,16 @@
 
 (defun join-keys (root column)
   "Return a list of key columns that lead from ROOT to COLUMN (if any)."
-  (labels ((f (root/ column/)
-             (if (member column/ (schema-columns root/))
+  (labels ((f (root* column*)
+             (if (member column* (schema-columns root*))
                ;; If ROOT table contains COLUMN, the chain ends.
                (list t)
                ;; Otherwise, if ROOT has possible left joins, evaluate them.
                (first (remove nil (mapcar #'(lambda (record)
-                                              (let ((ret (f (second record) column/)))
+                                              (let ((ret (f (second record) column*)))
                                                 (when ret
                                                   (cons (third record) ret))))
-                                          (many-joins root/)))))))
+                                          (many-joins root*)))))))
     (let ((result (f root column)))
       (butlast result))))
 
@@ -467,7 +467,8 @@
   
 
 
-(defun select/ (columns &key (where '()) (limit nil) (offset nil)); (order-by '())) ; (:group-by cols) :having col
+(defun select-simple (columns &key (where '()) (limit nil) (offset nil))
+                     ; (order-by '()))  (:group-by cols) :having col
   (multiple-value-bind (from-tables join-clauses qwhere)
       (frills columns where)
     (apply #'select
@@ -479,7 +480,7 @@
 
 ;;;;;;;;;;;;;;;
 
-(defun count/ (columns &key (where '()))
+(defun count-simple (columns &key (where '()))
   (multiple-value-bind (from-tables join-clauses qwhere)
       (frills columns where)
     (let ((result (select '("count(*)") :from from-tables :left-join join-clauses :where qwhere)))

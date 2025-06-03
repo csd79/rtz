@@ -105,6 +105,7 @@
   (let ((temp-header (table-columns temp))
         (temp-rows   (dump-table temp))
         (root-table  (root-table)))
+;    (loop for row across temp-rows doing
     (dolist (row temp-rows)
       (resolve-table
        (resolve-values root-table temp-header row))
@@ -118,22 +119,6 @@
 ;;; Operations
 
 
-#|(defun import-xlsx (obj)
-  "Import XLSX file into DB."
-  (load-data-source obj :import)
-  (let ((xarray (source-data obj :import))
-        (step-import 1)
-        (step-fix 4)) ; TEMP->FIX is 4x slower than IMPORT-XARRAY
-    (wax::with-progress-new ("Excel importálás" obj (* (xarray-indexed-height xarray) (+ step-import step-fix)))
-      (dump obj "Táblázat megnyitása.~%")
-      
-      (let ((temp (unique-table-name "user")))
-        (create-table temp (column-names xarray))
-        (import-xarray temp obj step-import)
-        (temp->fix temp obj step-fix)
-        (drop-table temp)))))|#
-
-
 (defun import-xlsxs (obj)
   "Import XLSX files into DB."
   (wax::with-progress-new ("Importálás Excel fájlból" obj)
@@ -144,7 +129,8 @@
                        summing (xarray-indexed-height (source-data obj key))
                        doing   (wax::purge-data-source obj key)))
            (step-import 1)
-           (step-fix (* step-import 6)))
+           (step-fix (* step-import 6))
+           (*sqlfn* #'sql->list))
       ;; Setf progress limit according to number of lines
       (setf (pstep-limit obj) (* rows (+ step-import step-fix)))
       ;; Import each data source via separate temp tables:

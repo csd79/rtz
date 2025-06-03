@@ -46,7 +46,7 @@
    #:primary-key-p                        ; T if column is table's primary key
    #:primary-key                          ; what column is the primary key of TABLE?
    #:view                                 ; return view
-   #:import/                              ; return import header for column
+   #:import*                              ; return import header for column
        ;; types
    #:sequencep                            ; 
    #:seq-of-strings-p                     ; 
@@ -93,7 +93,7 @@
    #:create-table                         ; create table from a list of column definitions
    #:insert-into                          ; insert a list of values into listed columns of a table
    #:select                               ; basic SELECT
-       ;; select/
+       ;; select-simple
    #:table                                ; what table does column appear in?
    #:qualified-p                          ; does column contain table name prefix?
    #:unqualify                            ; remove table name from column name
@@ -104,7 +104,8 @@
    #:from-tables                          ; filter tables to the one that are not one-tables in schema
    #:join-keys                            ; list key columns that lead from table to column (if any)
    #:all-join-keys                        ; JOIN-KEYS for multiple routes
-   #:select/                              ; simplified SELECT
+   #:select-simple                        ; simplified SELECT
+   #:count-simple                         ; COUNT, accepting the same args as SELECT-SIMPLE
 ;   #:
 
    ;; IMPORT.LISP

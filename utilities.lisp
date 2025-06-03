@@ -207,9 +207,9 @@
   (mapcar #'second (view view)))
 
 
-(defun import/ (column)
+#|(defun import* (column)
   "Return import header for COLUMN."
-  (column-import column (first (table column))))
+  (column-import column (first (table column))))|#
 
 
 ;;; ----------------------------------------------------------------------
@@ -359,14 +359,14 @@
     "~a is not a sequence of sequences, strings, symbols or numbers." list)
   (let ((open   (if parens "(" ""))
         (close  (if parens ")" ""))
-        (/list  (mapcar #'(lambda (element)
+        (list2  (mapcar #'(lambda (element)
                             (if (listp element)
                               (septd element :in-parens nil)
                               element))
                         list)))
     (if comma
-      (format nil "~a~{~a~^, ~}~a" open /list close)
-      (format nil "~a~{~a~^ ~}~a" open /list close))))
+      (format nil "~a~{~a~^, ~}~a" open list2 close)
+      (format nil "~a~{~a~^ ~}~a" open list2 close))))
 
 
 ;;; ----------------------------------------------------------------------

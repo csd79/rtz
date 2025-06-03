@@ -11,14 +11,14 @@
 
 (capi:define-interface browser ()
   ((dbview            :accessor dbview            :initarg  :dbview)
-   (first-row         :accessor first-row         :initform 0)
    (virtual-position  :accessor virtual-position  :initform 0)
-;   (previous-vpos     :accessor previous-vpos     :initform 0)
    (source-row-count  :accessor source-row-count  :initform 0)
    (header-height     :accessor header-height     :initarg  :header-height)
    (row-height        :accessor row-height        :initarg  :row-height)
    (visible-row-count :accessor visible-row-count :initform 0)
+   (id-temp-table     :accessor id-temp-table     :initform "")
    (page-size         :accessor page-size         :initarg  :page-size)
+   (page-first-row    :accessor page-first-row    :initform 0)
    (page              :accessor page              :initarg  :data)
    (query             :accessor query             :initform nil))
 
@@ -114,6 +114,20 @@
       (values hgt hhgt))))
 
 
+(defmethod refresh-query ((obj browser))
+  "Refresh ID temp table and reload pages.
+  Should be called when user pushes the query or refresh buttons."
+  ; meglévõ temp tábla törlése
+  ; új tempt tábla, bele azonosítók lekérdezése
+  ; lapok frissítése
+  )
+
+
+
+
+
+
+
 ; AKKOR MEGBÍZHATÓ, HA A LEKÉRDEZÉS MÉRETE NEM VÁLTOZIK.
 ; AZ LENNE AZ IDEÁLIS, HA A LEKÉRDEZÉS EREDMÉNYÉNEK ID OSZLOPA EGYBEN LEJÖNNE
 ; EGY HELYI ADATBÁZISBA, ÉS AZ ALPJÁN JELENNÉNEK MEG A BÖNGÉSZETT ADATOK.
@@ -121,7 +135,7 @@
 (defmethod init-source-row-count ((obj browser))
   "Select the count of resulting rows."
   (with-db-context
-    (let ((count (apply #'count/ (query obj))))
+    (let ((count (apply #'count-simple (query obj))))
       (setf (source-row-count obj) count
             (capi:range-end (vscroll obj)) count))))
 
@@ -149,23 +163,23 @@
 
 (defmethod page-fault-p ((obj browser))
   "Determine whether current virtual position is outside of page?"
-  (with-slots (first-row virtual-position page-size visible-row-count) obj
-    (not (<= first-row virtual-position
-             (+ first-row page-size (- visible-row-count))))))
+  (with-slots (page-first-row virtual-position page-size visible-row-count) obj
+    (not (<= page-first-row virtual-position
+             (+ page-first-row page-size (- visible-row-count))))))
 
 
 (defmethod load-page ((obj browser))
   "Load query data into PAGE."
   (with-db-context
     (setf (capi:collection-items (mclp obj))
-          (apply #'select/ (append (query obj)
+          (apply #'select-simple (append (query obj)
                                    (list :limit (page-size obj)
-                                         :offset (first-row obj)))))))
+                                         :offset (page-first-row obj)))))))
 
 
 (defmethod update-pages ((obj browser))
   "Refresh page upon page fault."
-  (setf (first-row obj)
+  (setf (page-first-row obj)
         (max 0 (- (virtual-position obj)
                   (round (/ (page-size obj) 2)))))
   (load-page obj))
@@ -175,7 +189,7 @@
   "When position is in page, scroll the list."
   (capi:scroll (mclp obj) :vertical :move
                (- (virtual-position obj)
-                  (first-row obj))))
+                  (page-first-row obj))))
 
 
 (defun handle-vscroll (interface &optional pane method position)
@@ -227,16 +241,30 @@
 
 
 #|
-A következõ teendõ:
+TEENDÕK:
 
-Tartsuk nyilván az elõzõ pozíciót, és a háttérben töltsük be az elõzõ és következõ lapot.
+ID-alapú lekérdezés a lapozáshoz.
+    Szükséges mûveletek: refresh-query (törölje a meglévõ temp táblákat, csináljon újat és
+                                        kérdezze le bele az ID-ket. Ezután frissítse a lapokat.)
+                         
 
-Mindhárom lap esetén külön szükséges nyilvántartani a kezdõsort.
+Kiválasztások követése!?!?!
 
-A page-fault-p-nek mindhárom lapot néznie kell...
-Sõt helyette legyen egy find-page ami visszaadja hogy melyik lapon van a keresett sor?
+677 alatt nem scrolloz!!!!!!!!!
 
-A mádik két lapból megnézni, melyk esik távolabb a v.sortól, és azt frissíteni a másik irányból.
+Legyen dinamikus lapozás: a lapok legyenek egy listában, és mindegyiknek legyen saját kezdõsora.
+    A lapok között legyen egy elsõdleges, amiben a görgetés történik, és legyen n db. másodlagos,
+        amelyk mind más-más területet fednek le az elsõdleges elõtt/után.
+    Görgetési eseménykor meg kell nézni h. az elsõdleges lapon vagyunk-e (primary-page-fault-p).
+        Ha igen. görgetés.
+    Ha nem, megnézni hogy a virtuális sor megtalálható-e valamelyik lapon.
+    Ha igen, legyen az az elsõdleges lap, és a többibõl eldobni amelyik már nem releváns és
+        feltölteni egy szükséges lappal (mindez a háttérben).
+    Ha nem, teljesen újratölteni a lapokat.
+
+
+A listában történõ görgetõ események visszavetítése a vscrollra.
+    
 |#
 
 
@@ -253,4 +281,4 @@ A mádik két lapból megnézni, melyk esik távolabb a v.sortól, és azt frissíteni a
 (defun test07 ()
   "Count selection"
   (with-db-context
-    (count/ (view-columns :main))))
+    (count-simple (view-columns :main))))

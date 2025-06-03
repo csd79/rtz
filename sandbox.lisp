@@ -99,10 +99,10 @@
                            (szerv_egysegek tank_kozpontok tank_kozpont_id))
               :where `(,(col 'tank_kozpont 'tank_kozpontok) = "Egri Tankerületi Központ"))|#
       
-#|      (select/ '(igenyles_id)
+#|      (select-simple '(igenyles_id)
                :where '(tank_kozpont = "Egri Tankerületi Központ"))|#
 
-#|      (select/ '(telefon)
+#|      (select-simple '(telefon)
                :where '(email like "%@isi%"))|#
 
       )))

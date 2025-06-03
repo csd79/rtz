@@ -127,3 +127,34 @@ SELECTION  = '()
 
 
 
+
+
+
+
+
+
+----------------------------------
+
+Select id into new table. Use that to maintain query consistency while browsing results.
+New table should not be a temp table, as temp tables are dropped as soon as connection is closed.
+
+; Selecting IGENYLES_ID into new table
+create table temp0001 as
+  select igenyles_id from igenylesek
+    left join szerv_egysegek on igenylesek.szerv_egys_id = szerv_egysegek.szerv_egys_id
+	left join tank_kozpontok on szerv_egysegek.tank_kozpont_id = tank_kozpontok.tank_kozpont_id
+	where tank_kozpontok.tank_kozpont = "Egri Tankerületi Központ";
+
+; Selecting columns from db, rows according to temp table
+select IGENYLES_ID, TANK_KOZPONT, SZERV_EGYS, BEOSZTAS, VISELT_CSALADNEV, VISELT_UTONEV_1, VISELT_UTONEV_2, SZUL_CSALADNEV, SZUL_UTONEV_1, SZUL_UTONEV_2, ANYA_CSALADNEV, ANYA_UTONEV_1, ANYA_UTONEV_2, ORSZAG, VAROS, SZUL_DATUMA, IGAZOLVANYSZAM, TELEFON, EMAIL, T_SOROZATSZAM, T_ERVENYESSEG_KEZDETE, T_ERVENYESSEG_VEGE, T_TIPUS, T_KAPCS_ESZKOZ, T_ALLAPOT, T_VISSZAVONAS_DATUMA
+  FROM (IGENYLESEK)
+  LEFT JOIN SZERV_EGYSEGEK ON IGENYLESEK.SZERV_EGYS_ID = SZERV_EGYSEGEK.SZERV_EGYS_ID
+  LEFT JOIN BEOSZTASOK ON IGENYLESEK.BEOSZTAS_ID = BEOSZTASOK.BEOSZTAS_ID
+  LEFT JOIN SZEMELYEK ON IGENYLESEK.SZEMELY_ID = SZEMELYEK.SZEMELY_ID
+  LEFT JOIN T_TIPUSOK ON IGENYLESEK.T_TIPUS_ID = T_TIPUSOK.T_TIPUS_ID
+  LEFT JOIN T_KAPCS_ESZKOZOK ON IGENYLESEK.T_KAPCS_ESZKOZ_ID = T_KAPCS_ESZKOZOK.T_KAPCS_ESZKOZ_ID
+  LEFT JOIN T_ALLAPOTOK ON IGENYLESEK.T_ALLAPOT_ID = T_ALLAPOTOK.T_ALLAPOT_ID
+  LEFT JOIN TANK_KOZPONTOK ON SZERV_EGYSEGEK.TANK_KOZPONT_ID = TANK_KOZPONTOK.TANK_KOZPONT_ID
+  LEFT JOIN VAROSOK ON SZEMELYEK.VAROS_ID = VAROSOK.VAROS_ID
+  LEFT JOIN ORSZAGOK ON VAROSOK.ORSZAG_ID = ORSZAGOK.ORSZAG_ID
+  where igenylesek.igenyles_id in (select IGENYLES_ID from temp0001);
