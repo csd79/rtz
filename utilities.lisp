@@ -197,14 +197,29 @@
   (getf (getf *schema* :views) view))
 
 
+(defun view-id (view)
+  "Return id column name for VIEW."
+  (getf (view view) :id))
+
+
+(defun view-meat (view)
+  "Helper fn for VIEW-COLUMNS & VIEW-LABELS."
+  (getf (view view) :columns))
+
+
 (defun view-columns (view)
   "Return columns of VIEW."
-  (mapcar #'first (view view)))
+  (mapcar #'first (view-meat view)))
 
 
 (defun view-labels (view)
   "Return column labels of VIEW."
-  (mapcar #'second (view view)))
+  (mapcar #'second (view-meat view)))
+
+
+(defun view-order (view)
+  "Return the default ordering for VIEW."
+  (getf (view view) :order))
 
 
 #|(defun import* (column)

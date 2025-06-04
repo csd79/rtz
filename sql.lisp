@@ -35,10 +35,8 @@
                   (apply #'execute-to-list *db* statement params))))
     (when *statements-out*
       (format *statements-out*
-              "~a~%~a~%~a~%~%~%"
-              statement
-              params
-              result))
+;              "~a~%~a~%~a~%~%~%" statement params result))
+              "~a" statement))
     result))
 
 
@@ -117,7 +115,7 @@
           list))
 
 
-(defun clause (name list)
+(defun clause (name arg)
   "General worker for generating clauses."
   (let ((name-string (typecase name
                        (list (septd name :in-parens nil))
@@ -125,7 +123,9 @@
                        (string name)
                        (t (error "'~a' is not a usable clause name." name)))))
     (septd (nconc (list (str:replace-all "-" " " name-string))
-                  (type-rewrites list))
+                  (if (listp arg)
+                    (type-rewrites arg)
+                    (list arg)))
            :in-parens nil)))
 
 
@@ -153,10 +153,22 @@
   (clause :where filter-list))
 
 
-(defun clause-order-by (columns)
+(defun clause-order-by (ordering)
   "Generate ORDER BY clause."
-  (let ((columns2 (if (listp columns) columns (list columns))))
-    (clause :order-by columns2)))
+  (labels ((worker (list)
+             (when list
+               (let* ((first  (symbol->string (first list)))
+                      (second (symbol->string (second list)))
+                      (accum  (if (and (second list)
+                                       (member second '("asc" "desc") :test #'string-equal))
+                                (format nil "~a ~a" first second)
+                                first)))
+                 (cons accum (worker (if (string= first accum)
+                                       (cdr list)
+                                       (cddr list))))))))
+    (let* ((list*   (if (listp ordering) ordering (list ordering)))
+           (strings (worker list*)))
+      (clause :order-by (sql-list strings)))))
 
 
 (defun clause-group-by (column)
@@ -283,14 +295,14 @@
          (statement  (str:unwords (str:words
                        (statement "select ~a ~a ~a ~a ~a ~a ~a ~a ~a ~a"
                                   distinct* columns* from* left-join*
-                                  where* order-by* group-by* having*
-                                  limit* offset*)))))
+                                  where* group-by* having*
+                                  order-by* limit* offset*)))))
 ;    (sql->list statement inserts)))
     (funcall *sqlfn* statement inserts)))
 
 
 ;;; ----------------------------------------------------------------------
-;;; SELECT-SIMPLE
+;;; Simple operations
 
 
 (defun table (column &key (primary-key-allowed nil) (foreign-allowed nil))
@@ -346,7 +358,7 @@
     column))
 
 
-(defun qualify (column &key (primary-key-allowed nil) (foreign-allowed nil))
+(defun qualify (column &key (primary-key-allowed nil) (foreign-allowed nil) (non-column-allowed nil))
   "Qualify COLUMN name adding table prefix."
   (let* ((column* (unqualify column))
          (table   (table column*
@@ -356,7 +368,9 @@
     (if table
       (funcall fn (apply #'format nil "~a.~a"
                          (mapcar #'symbol->string (list (first table) column*))))
-      (error "~a: no such column in any table in schema." column))))
+      (if non-column-allowed
+        column
+        (error "~a: no such column in any table in schema." column)))))
 
 
 (defun where-column-p (list index)
@@ -393,7 +407,9 @@
                      (qualify-where current)
                      (if (and (where-column-p tree index)
                               (not (qualified-p current :strict t :missing-error t)))
-                       (qualify (string->symbol current))
+                       (qualify (string->symbol current) :non-column-allowed t
+                                :primary-key-allowed t
+                                )
                        current))))
 
 
@@ -467,21 +483,81 @@
   
 
 
-(defun select-simple (columns &key (where '()) (limit nil) (offset nil))
-                     ; (order-by '()))  (:group-by cols) :having col
+(defun select-simple (columns &key (where '()) (limit nil) (offset nil) (order-by '()))
+                     ; (:group-by cols) :having col
   (multiple-value-bind (from-tables join-clauses qwhere)
       (frills columns where)
     (apply #'select
            (append (list columns :from from-tables :left-join join-clauses :where qwhere)
+                   (when order-by
+                     (list :order-by order-by))
                    (when limit
                      (list :limit limit))
                    (when offset
-                     (list :offset offset))))))
+                     (list :offset offset))
+                   ))))
 
-;;;;;;;;;;;;;;;
 
 (defun count-simple (columns &key (where '()))
   (multiple-value-bind (from-tables join-clauses qwhere)
       (frills columns where)
     (let ((result (select '("count(*)") :from from-tables :left-join join-clauses :where qwhere)))
       (first (elt result 0)))))
+
+
+(defun select-simple-id-into-temp (columns &key (where '()) (temp ""))
+  "Create table TEMP and select COLUMN (presumably and id) into it."
+  (unless (string= temp "")
+    (let* ((select-substatement (verify-statements (:execute nil)
+                                  (select-simple columns :where where)))
+           (full-statement      (format nil "create table ~a as ~a"
+                                        temp
+                                        select-substatement)))
+;      full-statement)))
+      (funcall *sqlfn* full-statement))))
+
+
+#|(defun select-simple-by-temp (columns &key (where '()) (temp "")    (id "")
+                                           (limit nil) (offset nil) (order-by '()))
+  "Select columns where row id is in TEMP."
+  (declare (ignore where))
+  (let* ((select-substatement (verify-statements (:execute nil)
+                                (select-simple columns :order-by order-by)))
+         (root-start          (+ 6 (search "FROM (" select-substatement)))
+         (root-end            (search ")" select-substatement :start2 root-start))
+         (root                (subseq select-substatement root-start root-end))
+         (limit*              (if limit (format nil " limit ~a" limit) ""))
+         (offset*             (if offset (format nil " offset ~a" offset) ""))
+         (full-statement      (format nil "~a where ~a.~a in (select ~a from ~a~a~a)"
+                                        select-substatement root id id temp limit* offset*)))
+;    full-statement))
+    (funcall *sqlfn* full-statement)))|#
+#|(defun select-simple-by-temp (columns &key (where '()) (temp "")    (id "")
+                                           (limit nil) (offset nil) (order-by '()))
+  "Select columns where row id is in TEMP."
+  (declare (ignore where))
+  (let* ((select-substatement (verify-statements (:execute nil)
+                                (select-simple columns
+                                               :order-by order-by
+                                               :where `(,id in (select ,id from ,temp))
+                                               )))
+#|         (root-start          (+ 6 (search "FROM (" select-substatement)))
+         (root-end            (search ")" select-substatement :start2 root-start))
+         (root                (subseq select-substatement root-start root-end))|#
+         (limit*              (if limit (format nil " limit ~a" limit) ""))
+         (offset*             (if offset (format nil " offset ~a" offset) ""))
+;         (full-statement      (format nil "~a where ~a.~a in (select ~a from ~a~a~a)"
+;                                        select-substatement root id id temp limit* offset*))
+         )
+;    full-statement))
+    select-substatement))
+;    (funcall *sqlfn* full-statement)))|#
+(defun select-simple-by-temp (columns &key (where '()) (temp "")    (id "")
+                                           (limit nil) (offset nil) (order-by '()))
+  "Select columns where row id is in TEMP."
+  (declare (ignore where))
+  (apply #'select-simple columns
+         :order-by order-by
+         :where `(,id in (select ,id from ,temp))
+         (append (if limit (list :limit limit) '())
+                 (if offset (list :offset offset) '()))))

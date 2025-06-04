@@ -158,3 +158,36 @@ select IGENYLES_ID, TANK_KOZPONT, SZERV_EGYS, BEOSZTAS, VISELT_CSALADNEV, VISELT
   LEFT JOIN VAROSOK ON SZEMELYEK.VAROS_ID = VAROSOK.VAROS_ID
   LEFT JOIN ORSZAGOK ON VAROSOK.ORSZAG_ID = ORSZAGOK.ORSZAG_ID
   where igenylesek.igenyles_id in (select IGENYLES_ID from temp0001);
+
+
+
+
+
+
+
+
+
+
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+BROWSER INTERFACE MECHANIZMUS
+
+INIT
+- BROWSER létrehozása                                                                               DBVIEW, ROW-HEIGHT, HEADER-HEIGHT, callbacks
+- létrehozunk egy id temp táblát, és a query alapján feltöltjük (SELECT-SIMPLE-ID-INTO-TEMP)        QUERY, ID-TEMP-TABLE
+- A forrás sorok számát beolvassuk (INIT-ROW-COUNT-FROM-TEMP-ID)                                    SOURCE-ROW-COUNT
+- feltöltjük a lapokat (JELENLEG LOAD-PAGES AZ AKTUÁLIS LAPOT KÖZVETLENÜL A PANE-BE TÖLTI BE!!!)    PAGE-FIRST-ROW, PAGE-SIZE, PAGE
+- az aktuális lapot bemásoljuk a pane-be (...majd)
+- MEGJELENHET AZ INTERFACE
+- listaterület magasságának kiszámítása (RESIZE-LIST-AREA)                                          VISIBLE-ROW-COUNT
+
+
+
+
+
+
+Régi módszer:
+INIT:
+- OBJ létrehozása: HEADERS, DBVIEW, ROW-HEIGHT, HEADER-HEIGHT, callbacks
+- a QUERY-be be lett töltve a view oszloplista!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
