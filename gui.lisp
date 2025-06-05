@@ -27,6 +27,7 @@
    (visible-row-count :accessor visible-row-count :initform 0)
 
    (vpos              :accessor vpos              :initform 0)
+   (selection         :accessor selection         :initform '())
    )
 
   (:panes
@@ -50,6 +51,7 @@
     :columns              (:initarg headers)
     :items                (:initarg data)
     :interaction          :extended-selection
+;    :interaction          :multiple-selection
     :items-get-function   #'aref
     :item-print-functions #'(lambda (item)
                               (cond ((numberp item) (format nil "~a" item))
@@ -57,9 +59,14 @@
                                      "")
                                     (t item)))
     :horizontal-scroll    t
-    :vertical-scroll      (:initarg :browser-vertical-scroll)
-    :scroll-callback      (:initarg :browser-own-scroll)
-    :filter               nil)
+    :vertical-scroll      (:initarg :browser-vertical-scroll-allowed)
+;    :scroll-callback      (:initarg :browser-own-scroll)
+    :selection-callback   (:initarg :mclp-selection)
+    :extend-callback      (:initarg :mclp-extend)
+    :retract-callback     (:initarg :mclp-retract)
+    :callback-type        :item
+    :filter               nil
+    )
 
    (vscroll
     capi:scroll-bar
@@ -93,12 +100,16 @@
     :visible-max-width :screen-width
     :visible-min-height '(/ :screen-height 2)
     :visible-max-height :screen-height
-    :browser-vertical-scroll :without-bar
+    :browser-vertical-scroll-allowed :without-bar
     :page-size 200 ;50000
     :data nil
     :vscroll-max 100
     :upper-button nil
     :query '()
+
+    :mclp-selection nil
+    :mclp-extend nil
+    :mclp-retract nil
     ))
 
 
@@ -116,7 +127,7 @@
                           :data (coerce (loop for i from 0 below number-of-rows
                                               collecting '(".."))
                                         'vector)
-                          :browser-vertical-scroll nil)))
+                          :browser-vertical-scroll-allowed nil)))
     (let* ((hgt1 (height (make-interface 1)))
            (hgt  (- (height (make-interface 2)) hgt1))
            (hhgt (- hgt1 hgt)))
@@ -228,12 +239,12 @@
             (capi:range-end        (vscroll obj)) range-end
             (capi:range-slug-start (vscroll obj)) 0
             (capi:range-slug-end   (vscroll obj)) slug-size)
-      (setf g (list :scroll-steps scroll-steps :slug-prop* slug-prop*
+#|      (setf g (list :scroll-steps scroll-steps :slug-prop* slug-prop*
                     :slug-size slug-size :range-end range-end
                     :slug-start (capi:range-slug-start (vscroll obj))
                     :slug-end (capi:range-slug-end   (vscroll obj))
                     :page-first-row (page-first-row obj)
-                    ))
+                    ))|#
       )))
     
 
@@ -241,7 +252,7 @@
 (defmethod init2 ((obj browser))
   (resize-list-area obj)
   (init-vscroll obj)
-  (capi:redisplay-interface obj)
+;  (capi:redisplay-interface obj)
   )
 
 
@@ -260,7 +271,11 @@
                   (visible-row-count interface)
                   (capi:range-end pane)
 ;                  (capi:scroll-bar-page-size pane)
-                  (float (vpos interface))
+
+;                  (float (vpos interface))
+                  (vpos interface)
+
+
                   (capi:range-slug-start pane)
                   (capi:range-slug-end pane)
                   (page-fault-p interface)
@@ -313,6 +328,16 @@
 
 
 
+#|
+(defun feedback (name)
+  #'(lambda (&rest args)
+      (push (list name args
+
+                  ) g))
+|#
+
+
+
 (defun make-browser (view)
   "Create & initialize browser window."
   (multiple-value-bind (row-height header-height)
@@ -333,9 +358,6 @@
             :row-height               row-height
             :header-height            header-height
             :vscroll-callback         #'handle-vscroll
-            :browser-own-scroll       nil;#'(lambda (interface pane method position)
-                                         ; (wax:wg-msg "~a  ~a  ~a  ~a"
-                                         ;             interface pane method position))
             :upper-button             #'(lambda (interface)
                                           (setf (query interface)
                                                 (next-query))
@@ -343,8 +365,41 @@
                                           (init2 interface)
                                           (handle-vscroll interface)
                                           )
+
+#|            :browser-own-scroll
+            #'(lambda (&rest args)
+                (push (list :browser-own-scroll args
+                            (capi:pane-descendant-child-with-focus
+                             (capi:top-level-interface (first args)))) g))|#
+            :mclp-selection
+            #'(lambda (&rest args)
+                (push (list :mclp-selection args
+;                            (capi:pane-descendant-child-with-focus
+;                             (first (last args)))
+                            ) g))
+            :mclp-extend
+            #'(lambda (&rest args)
+                (push (list :mclp-extend args
+;                            (capi:pane-descendant-child-with-focus 
+;                             (first (last args)))
+                            ) g))
+            :mclp-retract
+            #'(lambda (&rest args) (push (list :mclp-retract args
+;                            (capi:pane-descendant-child-with-focus
+;                             (first (last args)))
+                            ) g))
+
+;            :browser-vertical-scroll-allowed t
+
+
+
+
             )))
       (init1 interface)
+      (setf (capi::simple-pane-scroll-callback (mclp interface))
+            #'(lambda (obj dimension operation pos-list &rest options)
+                (push (list :browser-own-scroll obj dimension operation pos-list) g)))
+;                (wax:wg-msg "~a  ~a  ~a" dimension operation pos-list)))
       interface))
 )
 
@@ -360,16 +415,6 @@ TEENDÕK:
 A listában történõ görgetõ események visszavetítése a vscrollra.
 
 Kiválasztások követése!?!?!
-
-Legyen dinamikus lapozás: a lapok legyenek egy listában, és mindegyiknek legyen saját kezdõsora/kijelöltje.
-    A lapok között legyen egy elsõdleges, amiben a görgetés történik, és legyen n db. másodlagos,
-        amelyk mind más-más területet fednek le az elsõdleges elõtt/után.
-    Görgetési eseménykor meg kell nézni h. az elsõdleges lapon vagyunk-e (primary-page-fault-p).
-        Ha igen. görgetés.
-    Ha nem, megnézni hogy a virtuális sor megtalálható-e valamelyik lapon.
-    Ha igen, legyen az az elsõdleges lap, és a többibõl eldobni amelyik már nem releváns és
-        feltölteni egy szükséges lappal (mindez a háttérben).
-    Ha nem, teljesen újratölteni a lapokat.
 |#
 
 
