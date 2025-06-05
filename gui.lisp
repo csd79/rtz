@@ -20,13 +20,13 @@
 
    (source-row-count  :accessor source-row-count  :initform 0)
 
+   (spread            :accessor spread            :initarg  :spread)
    (page-first-row    :accessor page-first-row    :initform 0)
    (page-size         :accessor page-size         :initarg  :page-size)
-   (page              :accessor page              :initarg  :data)
 
    (visible-row-count :accessor visible-row-count :initform 0)
 
-   (vpos              :accessor vpos              :initform 0)
+;   (vpos              :accessor vpos              :initform 0)
    (selection         :accessor selection         :initform '())
    )
 
@@ -48,33 +48,33 @@
    (mclp
     capi:multi-column-list-panel
     :accessor             mclp
-    :columns              (:initarg headers)
-    :items                (:initarg data)
+    :columns              (:initarg columns);headers)
+    :items                nil;(:initarg data)
     :interaction          :extended-selection
 ;    :interaction          :multiple-selection
-    :items-get-function   #'aref
+    :items-get-function   #'svref
     :item-print-functions #'(lambda (item)
                               (cond ((numberp item) (format nil "~a" item))
                                     ((member item '("NULL" nil) :test #'equal)
                                      "")
                                     (t item)))
     :horizontal-scroll    t
-    :vertical-scroll      (:initarg :browser-vertical-scroll-allowed)
+    :vertical-scroll      t ;(:initarg :browser-vertical-scroll-allowed)
 ;    :scroll-callback      (:initarg :browser-own-scroll)
-    :selection-callback   (:initarg :mclp-selection)
+#|    :selection-callback   (:initarg :mclp-selection)
     :extend-callback      (:initarg :mclp-extend)
-    :retract-callback     (:initarg :mclp-retract)
-    :callback-type        :item
+    :retract-callback     (:initarg :mclp-retract)|#
+;    :callback-type        :item
     :filter               nil
     )
 
-   (vscroll
+#|   (vscroll
     capi:scroll-bar
     :accessor vscroll
     :start 0
     :end (:initarg :vscroll-max)
     :orientation :vertical
-    :callback (:initarg :vscroll-callback))
+    :callback (:initarg :vscroll-callback))|#
 
    ;; ...import/export/exit...
 
@@ -83,14 +83,14 @@
     :accessor lower-button
     :text "Alsó gomb"
     :callback-type :interface
-    :callback nil));(:initarg lower-button)))
+    :callback (:initarg lower-button)))
 
    (:layouts
     (upper capi:row-layout '(upper-button disp))
-    (mid capi:row-layout '(mclp vscroll))
+;    (mid capi:row-layout '(mclp vscroll))
     (lower capi:row-layout '(lower-button))
     (borders capi:column-layout '(upper lower))
-    (default capi:column-layout '(upper mid lower)))
+    (default capi:column-layout '(upper mclp lower)))
 
    (:default-initargs
     :display-state :normal
@@ -100,16 +100,20 @@
     :visible-max-width :screen-width
     :visible-min-height '(/ :screen-height 2)
     :visible-max-height :screen-height
-    :browser-vertical-scroll-allowed :without-bar
+;    :browser-vertical-scroll-allowed :without-bar
     :page-size 200 ;50000
-    :data nil
-    :vscroll-max 100
+
+
+
+;    :data nil
+;    :vscroll-max 100
     :upper-button nil
+    :lower-button nil
     :query '()
 
-    :mclp-selection nil
+#|    :mclp-selection nil
     :mclp-extend nil
-    :mclp-retract nil
+    :mclp-retract nil|#
     ))
 
 
@@ -137,7 +141,7 @@
 ;;; Init 1 --------------------------------
 
 
-(defmethod query-tempid ((obj browser))
+#|(defmethod query-tempid ((obj browser))
   "Refresh ID temp table."
   (with-db-context
     (with-slots (id-temp-table) obj
@@ -149,9 +153,9 @@
       (apply #'select-simple-id-into-temp
              (list (view-id (dbview obj)))
              (append (query obj)
-                     (list :temp id-temp-table))))))
+                     (list :temp id-temp-table))))))|#
 
-(defmethod init-paging ((obj browser))
+#|(defmethod init-paging ((obj browser))
   "Find the number of rows in query, set it to both slot and vscroll bar range.
    Also set relative pos to 0."
   (with-db-context
@@ -164,11 +168,10 @@
             (capi:range-end (vscroll obj)) count
             (vpos obj) 0
             (page-first-row obj) 0
-            ))))
+            ))))|#
 
 
-
-(defmethod load-page ((obj browser))
+#|(defmethod load-page ((obj browser))
   "Load query data into PAGE."
   (with-db-context
     (with-slots (dbview) obj
@@ -180,12 +183,12 @@
                                  :id   (view-id dbview)
                                  :limit (page-size obj)
                                  :offset (page-first-row obj)
-                                 :order-by (view-order dbview))))))))
+                                 :order-by (view-order dbview))))))))|#
 
-(defmethod init1 ((obj browser))
+#|(defmethod init1 ((obj browser))
   (query-tempid obj)
   (init-paging obj)
-  (load-page obj))
+  (load-page obj))|#
 
 
 ;;; Init 2 --------------------------------
@@ -197,69 +200,15 @@
                         capi:%height%))
          (row-count   (floor (- pane-height (header-height obj)) (row-height obj))))
     (setf (visible-row-count obj) row-count
-          (capi:scroll-bar-page-size (vscroll obj)) row-count)
-    (handle-vscroll obj)
+;          (capi:scroll-bar-page-size (vscroll obj)) row-count
+          )
+;    (handle-vscroll obj)
     ))
-
-(defparameter *min-slug-prop* 1/15)
-
-#|(defmethod init-vscroll ((obj browser))
-  "Init vscroll range & slug size."
-  (setf g 'init-vscroll)
-  (with-slots (source-row-count visible-row-count) obj
-    (let ((range-end nil) (slug-end nil))
-      (cond
-       ;; If all rows fit on the screen
-       ((<= source-row-count visible-row-count)
-        (setf range-end 1
-              slug-end  1))
-       ;; If slug slize is larger than *MIN-VSLUG-SIZE*
-       ((<= *min-vslug-size* (/ source-row-count visible-row-count))
-        (setf range-end source-row-count
-              slug-end  visible-row-count))
-       ;; Otherwise
-       (t (setf range-end (round (* *min-vslug-size* source-row-count) visible-row-count)
-;                slug-end  *min-vslug-size*)))
-                slug-end  (round source-row-count *min-vslug-size*))))
-      ;; Actual assignments:
-      (setf (capi:range-end (vscroll obj))        range-end
-            (capi:range-slug-start (vscroll obj)) 0
-            (capi:range-slug-end (vscroll obj))   slug-end))))|#
-(defmethod init-vscroll ((obj browser))
-  "Init vscroll range & slug size."
-  (with-slots (source-row-count visible-row-count) obj
-    (let* ((scroll-steps (max (- source-row-count visible-row-count) 0))
-           (slug-prop    (min (/ visible-row-count source-row-count) 1))
-           (slug-prop*   (max slug-prop *min-slug-prop*))
-           (slug-size    (round (* source-row-count slug-prop*)))
-           (range-end    (+ scroll-steps slug-size))
-;           (position     (round (* source-row-count (relative-vpos obj))))
-           )
-      (setf ;(relative-vpos obj)                   0
-            (capi:range-end        (vscroll obj)) range-end
-            (capi:range-slug-start (vscroll obj)) 0
-            (capi:range-slug-end   (vscroll obj)) slug-size)
-#|      (setf g (list :scroll-steps scroll-steps :slug-prop* slug-prop*
-                    :slug-size slug-size :range-end range-end
-                    :slug-start (capi:range-slug-start (vscroll obj))
-                    :slug-end (capi:range-slug-end   (vscroll obj))
-                    :page-first-row (page-first-row obj)
-                    ))|#
-      )))
-    
-
-  
-(defmethod init2 ((obj browser))
-  (resize-list-area obj)
-  (init-vscroll obj)
-;  (capi:redisplay-interface obj)
-  )
-
 
 ;;; vscroll -------------------------------
 
 
-(defun update-vpos (interface)
+#|(defun update-vpos (interface)
   "Scale source row count according to vscroll slug position."
   (let ((pane (vscroll interface)))
     (setf (vpos interface)
@@ -280,35 +229,35 @@
                   (capi:range-slug-end pane)
                   (page-fault-p interface)
                   ))
-  ))
+  ))|#
 
-(defmethod page-fault-p ((obj browser))
+#|(defmethod page-fault-p ((obj browser))
   "Determine whether current virtual position is outside of page?"
   (with-slots (page-first-row page-size visible-row-count) obj
     (not (<= page-first-row
              (vpos obj)
-             (+ page-first-row page-size (- visible-row-count))))))
+             (+ page-first-row page-size (- visible-row-count))))))|#
 
-(defmethod update-pages ((obj browser))
+#|(defmethod update-pages ((obj browser))
   "Refresh page upon page fault."
   (setf (page-first-row obj)
         (max 0 (- (vpos obj)
                   (round (/ (page-size obj) 2)))))
-  (load-page obj))
+  (load-page obj))|#
 
-(defmethod scroll-mclp ((obj browser))
+#|(defmethod scroll-mclp ((obj browser))
   "When position is in page, scroll the list."
   (capi:scroll (mclp obj) :vertical :move
                (- (vpos obj)
-                  (page-first-row obj))))
+                  (page-first-row obj))))|#
 
-(defun handle-vscroll (interface &optional pane method position)
+#|(defun handle-vscroll (interface &optional pane method position)
   "Update virtual position, check/handle page fault and scroll the list."
   (declare (ignore pane method position))
   (update-vpos interface)
   (when (page-fault-p interface)
     (update-pages interface))
-  (scroll-mclp interface))
+  (scroll-mclp interface))|#
 
 
 ;;; Create browser ------------------------
@@ -328,50 +277,46 @@
 
 
 
-#|
-(defun feedback (name)
-  #'(lambda (&rest args)
-      (push (list name args
-
-                  ) g))
-|#
-
-
 
 (defun make-browser (view)
   "Create & initialize browser window."
   (multiple-value-bind (row-height header-height)
       (calculate-row-height)
-    (let ((interface
-           (make-instance
-            'browser
-            :headers                  (mapcar #'(lambda (label)
-                                                  (list :title label))
-                                              (view-labels view))
-            :geometry-change-callback #'(lambda (interface x y w h)
-                                          (declare (ignore x y w h))
-;                                          (resize-list-area interface)
-                                          (init2 interface)
-                                          (handle-vscroll interface)
-                                          )
-            :dbview                   view
-            :row-height               row-height
-            :header-height            header-height
-            :vscroll-callback         #'handle-vscroll
-            :upper-button             #'(lambda (interface)
-                                          (setf (query interface)
-                                                (next-query))
-                                          (init1 interface)
-                                          (init2 interface)
-                                          (handle-vscroll interface)
-                                          )
+    (let* ((scroll-listener nil)
+           (interface
+            (make-instance
+             'browser
+             :columns                  (mapcar #'(lambda (label)
+                                                   (list :title label))
+                                               (view-labels view))
+             :geometry-change-callback #'(lambda (interface x y w h)
+                                           (declare (ignore x y w h))
+                                           (resize-list-area interface)
+ ;                                         (init2 interface)
+;                                          (handle-vscroll interface)
+                                           )
+             :dbview                   view
+             :row-height               row-height
+             :header-height            header-height
+;            :vscroll-callback         #'handle-vscroll
+             :upper-button             #'(lambda (interface)
+                                           (setf (query interface)
+                                                 (next-query))
+                                           (refresh-spread interface)
+;                                          (init1 interface)
+;                                          (init2 interface)
+;                                          (handle-vscroll interface)
+                                           )
+             :lower-button             #'(lambda (&rest args)
+                                           (declare (ignore args))
+                                           (mp:process-terminate scroll-listener))
 
 #|            :browser-own-scroll
             #'(lambda (&rest args)
                 (push (list :browser-own-scroll args
                             (capi:pane-descendant-child-with-focus
                              (capi:top-level-interface (first args)))) g))|#
-            :mclp-selection
+#|            :mclp-selection
             #'(lambda (&rest args)
                 (push (list :mclp-selection args
 ;                            (capi:pane-descendant-child-with-focus
@@ -387,24 +332,30 @@
             #'(lambda (&rest args) (push (list :mclp-retract args
 ;                            (capi:pane-descendant-child-with-focus
 ;                             (first (last args)))
-                            ) g))
+                            ) g))|#
 
 ;            :browser-vertical-scroll-allowed t
 
 
 
 
-            )))
-      (init1 interface)
-      (setf (capi::simple-pane-scroll-callback (mclp interface))
+             )))
+;      (init1 interface)
+#|      (setf (capi::simple-pane-scroll-callback (mclp interface))
             #'(lambda (obj dimension operation pos-list &rest options)
-                (push (list :browser-own-scroll obj dimension operation pos-list) g)))
+                (push (list :browser-own-scroll obj dimension operation pos-list) g)))|#
 ;                (wax:wg-msg "~a  ~a  ~a" dimension operation pos-list)))
+      (refresh-spread)
+      (setf scroll-listener
+            (mp-process-run-function
+             "Pager listener" ()
+             #'(lambda ()
+                 )));;;;;;;;;;;;;;;;;;;;;;;;;;;;;   ITT TARTOTTAM
       interface))
-)
+  )
 
-(defmethod interface-display :after ((obj browser))
-  (init2 obj))
+#|(defmethod interface-display :after ((obj browser))
+  (init2 obj))|#
   
   
 
