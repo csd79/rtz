@@ -62,7 +62,7 @@
 ;;; Database context
 
 
-(defmacro with-db-context (&body body)
+#|(defmacro with-db-context (&body body)
   "Create context where *DB* is connected to %DBFILE%, disconnected on exit when *AUTO-CLOSE* is true."
   `(unwind-protect
        (progn
@@ -72,7 +72,11 @@
      (when (and *auto-close*
                 (typep *db* 'sqlite-handle))
        (disconnect *db*)
-       (setf *db* nil))))
+       (setf *db* nil))))|#
+(defmacro with-db-context (&body body)
+  "Create context where *DB* is connected to %DBFILE%, disconnected on exit when *AUTO-CLOSE* is true."
+  `(with-open-database (*db* %dbfile% :busy-timeout *timeout*)
+     ,@body))
 
 
 (defun db-cleanup ()

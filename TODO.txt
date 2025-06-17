@@ -1,3 +1,41 @@
+Szűrés
+
+Keresés
+
+Import
+
+Manuális felvitel
+
+Manuális módosítás
+
+Bevitelkor/importkor/módosításkor: végleges rögzítés előtt ??? lehetséges egyezések felajánlása
+
+Több rekord módosítása (csak bizonyos mezőket lehessen így) (itt kell egyezéskeresés??)
+
+Törlés (valójában érvénytelenítés)
+
+Export
+
+Beállítások
+
+
+
+
+
+
+
+
+
+
+======================================================================================
+
+
+
+
+
+
+
+
 Importáláskor jelenleg csak a szöveg formában beírt dátumoat tudja beolvasni
 TK szinonímákat nem ismer fel (csak "Tankerületi Központ")
 Ha az iskola nevében előforsul "  " dupla space, akkor az igenylesek insertben ()-ként jelenik meg!
@@ -14,10 +52,6 @@ A *FOREIGN-SETTLEMENTS*-ben van egy szerbiai Baja. Mivel név szerint azonosítj
 
 
 
-
-
-
-Egér görgetés browser lista felett: legyen visszavezetve a vscroll-ra valahogy. LW levelezőlista!
 
 
 Jó lenne ha a progress ablak kezeletlen hiba esetén becsukódna.
