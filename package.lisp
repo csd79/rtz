@@ -12,6 +12,7 @@
    #:*db*                                 ; DB handle
    #:*timeout*
    #:*auto-close*
+   #:*rows-per-statement*                 ; number of rows to import in a single query
 ;   #:
 
    ;; SCHEMA.LISP
@@ -46,7 +47,10 @@
    #:primary-key-p                        ; T if column is table's primary key
    #:primary-key                          ; what column is the primary key of TABLE?
    #:view                                 ; return view
-   #:import*                              ; return import header for column
+   #:view-id                              ; id column name for VIEW
+   #:view-columns                         ; columns of VIEW
+   #:view-labels                          ; labels column of VIEW
+   #:view-order                           ; default ordering for VIEW
        ;; types
    #:sequencep                            ; 
    #:seq-of-strings-p                     ; 
@@ -104,19 +108,27 @@
    #:from-tables                          ; filter tables to the one that are not one-tables in schema
    #:join-keys                            ; list key columns that lead from table to column (if any)
    #:all-join-keys                        ; JOIN-KEYS for multiple routes
+   #:find-join                            ; find the join that uses KEY
+   #:frills                               ; calculate from tables, join clauses and proper where clause
    #:select-simple                        ; simplified SELECT
    #:count-simple                         ; COUNT, accepting the same args as SELECT-SIMPLE
+   #:select-simple-if-into-temp           ; create temp table, select id column into it
+   #:select-simple-by-temp                ; select columns where row id is in TEMP
 ;   #:
 
    ;; IMPORT.LISP
    #:import-xarray                        ; go over rows of source in OBJ by groups, import them into TABLE
    #:temp->fix                            ; move data from TEMP into fix tables
    #:import-xlsx
+
+   ;; GUI.LISP
+   #:make-browser                         ; create a browser window
 ;   #:
 
    ;; SIG.LISP
-   #:init-db
-   #:start
+   #:init-db                              ; create schema tables in db, fill in TKs
+   #:user-token                           ; short name of the current user
+   #:start                                ; ...soon...
 ;   #:
 
    ;; SANDBOX.LISP
@@ -126,7 +138,9 @@
    #:ctest-start
    #:test01
 ;   #:
+
+   ;; TEST.LISP
+   #:row                                  ; random person's data in a list
+   #:print-row                            ; print person's data in a form that can be turned into Excel columns
+;   #:
    ))
-
-
-

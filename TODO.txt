@@ -1,26 +1,58 @@
-Szűrés
-
-Keresés
-
 Import
-
-Manuális felvitel
-
-Manuális módosítás
-
-Bevitelkor/importkor/módosításkor: végleges rögzítés előtt ??? lehetséges egyezések felajánlása
-
-Több rekord módosítása (csak bizonyos mezőket lehessen így) (itt kell egyezéskeresés??)
-
-Törlés (valójában érvénytelenítés)
+  Többféle formátumból kell tudni importálni, mert több helyről kapunk adatot.
+  Ezekben az oszlopkiosztás és az ellenőrzés fn is más?
 
 Export
+  Az import formátum a sémában használható?
+  Csak kijelölt elemek exportálása
 
 Beállítások
+  Felhasználónév
+  Jelszó?
+  Adatbázis elérési helye
+  Alapértelemzett szűrés
 
+Szűrés / keresés
+  Legyen egy lista, amibe szűrési feltételeket vehetünk fel
+  Mezők listázása
+  Melyik milyen típusú adatot fogadjon?
+  Érték választás listából (bizonyos oszlopoknál?)
+  Dzsóker * (SQL csak %-t tud kezelni, ezt cseréljük arra)
+  Több érték kiválasztása (több TK)
+  Dátumnál előtte, utána, között
+  Mutassa a stornózott/lejárt/érvénytelen sorokat?
+  Vegye figyelembe az alapértelmezett szűrést? (alapértelmezésben igen - ez felhasználónként más TK csoportot jelent
+  Legyen egy ad-hoc változat, ami minden mezőben keres, implicit * (?)
 
+Rendezés
+  Egy másik lista, ahol rendezési veltételeket vehetünk fel prioritási sorba
 
+Manuális felvitel
+  Egy ablak az összes mezővel.
+  Ha ok, ellenőrzés.
+Manuális módosítás
+  Mint felvitelnél, de itt jelenjenek meg az aktuális értékek.
+  Kell mező a létrehozó és módosító neve/dátuma tárolására
+  Itt legyen stornozás is
+Több rekord módosítása (csak bizonyos mezőket lehessen így) (itt kell egyezéskeresés??)
+  Sémában jelenzi, mely mezőket lehet tömegesen módosítani
+  A módosított elemek: szűrés + kijelölés
+[ Utóbbi 3 lehetne egy interface 3 változata ]
 
+Bevitelkor/importkor/módosításkor: végleges rögzítés előtt ??? lehetséges egyezések felajánlása
+  homályos
+
+Közelgő feladatok jelzése
+  Legyen egy üresben indítható üzemmód, ami értesítésszerűen megmutatja a közelgő feladatokat.
+  Grafikus kijelzés idővonalon?
+
+---
+
+Archív adatbázis
+  Ebbe át lehet pakolni dolgokat
+  Lekérdezéskor innen is vegyen ki adatot, mintha az aktívban lennének
+  De az archívban lévő dolgokat már nem lehet módosítani
+  admin tudjon  mozgatni a kettő között
 
 
 
@@ -34,6 +66,9 @@ Beállítások
 
 
 
+Kijelölést követő scrollozáskor ugrál, főleg ha egérrel húzzuk a slugot.
+Az lenne ideális ha a feltorlódó paging kérésekből csak az utolsót hajtaná végre.
+SZTEM AMIKOR NAGY GÖRGETÉS UTÁN KÉTSZER VILLAN AKKOR AZ ELSŐ EGY FELESLEGES PAGING?
 
 
 Importáláskor jelenleg csak a szöveg formában beírt dátumoat tudja beolvasni

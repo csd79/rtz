@@ -35,7 +35,6 @@
                   (apply #'execute-to-list *db* statement params))))
     (when *statements-out*
       (format *statements-out*
-;              "~a~%~a~%~a~%~%~%" statement params result))
               "~a" statement))
     result))
 
@@ -49,12 +48,9 @@
     (loop for i from 0 below length
           for e in tree doing
           (setf (svref result i) e))
-;                (coerce e 'simple-vector)))
     result))
 
-
-;(defparameter *sqlfn* #'sql->list)
-(defparameter *sqlfn* #'sql->sv)
+(defparameter *sqlfn* #'sql->sv) ; #'sql->list
 
 
 (defun column-definition (column table)
@@ -197,7 +193,6 @@
 
 (defun drop-table (name)
   "Drop table NAME in *DB*."
-;  (sql->list (statement "drop table ~a" name)))
   (funcall *sqlfn* (statement "drop table ~a" name)))
 
 
@@ -209,7 +204,6 @@
 
 (defun table-info (table)
   "Return a list of columns descriptions for TABLE."
-;  (sql->list (statement "pragma table_info(~a)" table)))
   (funcall *sqlfn* (statement "pragma table_info(~a)" table)))
 
 
@@ -229,7 +223,6 @@
   "Return the complete contents of TABLE in the form of a list."
   (let ((columns (table-columns table)))
     (if columns
-;      (sql->list (statement "select ~a from ~a"
       (funcall *sqlfn* (statement "select ~a from ~a"
                                   (sql-list columns :parens nil)
                                   table))
@@ -238,7 +231,6 @@
 
 (defun number-of-rows (table)
   "Return the number of rows in TABLE."
-;  (second (first (sql->list (statement "select ~s, count(*) from ~a"
   (second (first (funcall *sqlfn* (statement "select ~s, count(*) from ~a"
                                              (first (table-columns table))
                                              table)))))
@@ -251,7 +243,6 @@
                    (seq-of-strings-or-symbols         (column-names cols-arg))
                    (t                                 (all-column-definitions name)))))
     (if columns
-;      (sql->list (statement "create table ~a ~a" name (sql-list columns :parens t)))
       (funcall *sqlfn* (statement "create table ~a ~a" name (sql-list columns :parens t)))
       (error "Couldn't create table ~a: list of columns is empty." name))))
 
@@ -266,7 +257,6 @@
     (unless (= length (* width height))
       (error "Numberof columns (~a) is in conflict with number of values (~a)." width length))
     ;; Operation.
-;    (sql->list (statement "insert ~ainto ~a ~a values ~a" ignore table
     (funcall *sqlfn* (statement "insert ~ainto ~a ~a values ~a" ignore table
                                 ;; List of destination columns.
                                 (sql-list (if (= width 1)
@@ -297,7 +287,6 @@
                                   distinct* columns* from* left-join*
                                   where* group-by* having*
                                   order-by* limit* offset*)))))
-;    (sql->list statement inserts)))
     (funcall *sqlfn* statement inserts)))
 
 
@@ -455,7 +444,6 @@
     (dolist (column all-collumns)
       (dolist (table from-tables)
         (push (join-keys table column) result)))
-;    (delete-duplicates (apply #'nconc (nreverse result))))) ;;;;;;;;;; kell nreverse??
     (sort-join-keys (delete-duplicates (apply #'nconc result)))))
 
 
@@ -494,8 +482,7 @@
                    (when limit
                      (list :limit limit))
                    (when offset
-                     (list :offset offset))
-                   ))))
+                     (list :offset offset))))))
 
 
 (defun count-simple (columns &key (where '()))
@@ -513,45 +500,9 @@
            (full-statement      (format nil "create table ~a as ~a"
                                         temp
                                         select-substatement)))
-;      full-statement)))
       (funcall *sqlfn* full-statement))))
 
 
-#|(defun select-simple-by-temp (columns &key (where '()) (temp "")    (id "")
-                                           (limit nil) (offset nil) (order-by '()))
-  "Select columns where row id is in TEMP."
-  (declare (ignore where))
-  (let* ((select-substatement (verify-statements (:execute nil)
-                                (select-simple columns :order-by order-by)))
-         (root-start          (+ 6 (search "FROM (" select-substatement)))
-         (root-end            (search ")" select-substatement :start2 root-start))
-         (root                (subseq select-substatement root-start root-end))
-         (limit*              (if limit (format nil " limit ~a" limit) ""))
-         (offset*             (if offset (format nil " offset ~a" offset) ""))
-         (full-statement      (format nil "~a where ~a.~a in (select ~a from ~a~a~a)"
-                                        select-substatement root id id temp limit* offset*)))
-;    full-statement))
-    (funcall *sqlfn* full-statement)))|#
-#|(defun select-simple-by-temp (columns &key (where '()) (temp "")    (id "")
-                                           (limit nil) (offset nil) (order-by '()))
-  "Select columns where row id is in TEMP."
-  (declare (ignore where))
-  (let* ((select-substatement (verify-statements (:execute nil)
-                                (select-simple columns
-                                               :order-by order-by
-                                               :where `(,id in (select ,id from ,temp))
-                                               )))
-#|         (root-start          (+ 6 (search "FROM (" select-substatement)))
-         (root-end            (search ")" select-substatement :start2 root-start))
-         (root                (subseq select-substatement root-start root-end))|#
-         (limit*              (if limit (format nil " limit ~a" limit) ""))
-         (offset*             (if offset (format nil " offset ~a" offset) ""))
-;         (full-statement      (format nil "~a where ~a.~a in (select ~a from ~a~a~a)"
-;                                        select-substatement root id id temp limit* offset*))
-         )
-;    full-statement))
-    select-substatement))
-;    (funcall *sqlfn* full-statement)))|#
 (defun select-simple-by-temp (columns &key (where '()) (temp "")    (id "")
                                            (limit nil) (offset nil) (order-by '()))
   "Select columns where row id is in TEMP."

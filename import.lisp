@@ -8,7 +8,6 @@
 ;;; xarray -> temp
 
 
-(defparameter *rows-per-statement* 10)
 
 
 (defun collect-row-values (rows)
@@ -68,9 +67,6 @@
                             (list :column column
                                   (resolve-values foreign-table temp-columns temp-values)))))
                     columns))))
-
-
-
 
 
 (defun andeq (columns values)

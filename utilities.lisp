@@ -62,17 +62,6 @@
 ;;; Database context
 
 
-#|(defmacro with-db-context (&body body)
-  "Create context where *DB* is connected to %DBFILE%, disconnected on exit when *AUTO-CLOSE* is true."
-  `(unwind-protect
-       (progn
-         (unless (typep *db* 'sqlite-handle)
-           (setf *db* (connect %dbfile% :busy-timeout *timeout*)))
-         ,@body)
-     (when (and *auto-close*
-                (typep *db* 'sqlite-handle))
-       (disconnect *db*)
-       (setf *db* nil))))|#
 (defmacro with-db-context (&body body)
   "Create context where *DB* is connected to %DBFILE%, disconnected on exit when *AUTO-CLOSE* is true."
   `(with-open-database (*db* %dbfile% :busy-timeout *timeout*)
@@ -224,11 +213,6 @@
 (defun view-order (view)
   "Return the default ordering for VIEW."
   (getf (view view) :order))
-
-
-#|(defun import* (column)
-  "Return import header for COLUMN."
-  (column-import column (first (table column))))|#
 
 
 ;;; ----------------------------------------------------------------------

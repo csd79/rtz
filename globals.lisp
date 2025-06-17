@@ -15,3 +15,5 @@
 (defparameter *db* nil)
 (defparameter *timeout* 10000)
 (defparameter *auto-close* t)
+
+(defparameter *rows-per-statement* 10)

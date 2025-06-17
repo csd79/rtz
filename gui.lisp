@@ -9,13 +9,13 @@
 ;;; Browser
 
 
-(defparameter *locking-timeout* 10)
+(defparameter *locking-timeout* 10) ; -> globals!
+
 
 (capi:define-interface browser ()
   ((dbview            :accessor dbview            :initarg  :dbview)
    (header-height     :accessor header-height     :initarg  :header-height)
    (row-height        :accessor row-height        :initarg  :row-height)
-;   (visible-row-count :accessor visible-row-count :initform 0)
    (query             :accessor query             :initarg  :query)
    (id-temp-table     :accessor id-temp-table     :initform "")
    (source-row-count  :accessor source-row-count  :initform 0)
@@ -25,8 +25,7 @@
    (pages             :accessor pages             :initform '())
    (pos               :accessor pos               :initform 0)
    (selection         :accessor selection         :initform '())
-   (lock              :accessor lock              :initform (mp:make-lock))
-   )
+   (lock              :accessor lock              :initform (mp:make-lock)))
 
   (:panes
    ;; ...filtering...
@@ -68,10 +67,7 @@
     :extend-callback      (:initarg :extend-callback)
     :retract-callback     (:initarg :retract-callback)
     :callback-type        :interface
-;    :test-function        #'(lambda (item1 item2)
-;                              (eq (elt item1 0) (elt item2 0)))
-    :keep-selection-p     t
-    )
+    :keep-selection-p     t)
 
 
    ;; ...import/export/exit...
@@ -86,7 +82,6 @@
    (:layouts
     (upper capi:row-layout '(upper-button selected disp))
     (lower capi:row-layout '(lower-button))
-;    (borders capi:column-layout '(upper lower))
     (default capi:column-layout '(upper mclp lower)))
 
    (:default-initargs
@@ -97,7 +92,7 @@
     :visible-max-width :screen-width
     :visible-min-height '(/ :screen-height 2)
     :visible-max-height :screen-height
-    :page-size 100 ;50000
+    :page-size 100 ;50000, -> globals!
 
     :vertical-scroll-allowed t
     :mclp-data #()
@@ -108,8 +103,7 @@
 
     :selection-callback nil
     :extend-callback nil
-    :retract-callback nil
-    ))
+    :retract-callback nil))
 
 
 (defun calculate-row-height ()
@@ -138,11 +132,13 @@
 
 
 (defmacro with-browser-locked ((obj) &body body)
+  "Locking context for any BROWSER object."
   `(mp:with-lock ((lock ,obj) :timeout *locking-timeout*)
      ,@body))
 
 
 (defmethod drop-temp-table ((obj browser))
+  "Drop temporary table (whose name is in OBJ)."
   (with-browser-locked (obj)
     (with-slots (id-temp-table) obj
       (unless (string= id-temp-table "")
@@ -178,38 +174,40 @@
 
 (defparameter *paging-mailbox* nil)
 
+
 (defun start-paging-listener ()
+  "Start paging listener in a separate thread."
   (mp:process-run-function
-   "Paging listener"
-   ()
+   "Paging listener" ()
    #'(lambda ()
        (setf *paging-mailbox* (mp:make-mailbox :size 10 :name "Paging listener mailbox"))
        (let ((event nil))
          (loop
           (setf event (mp:mailbox-wait-for-event *paging-mailbox* :wait-reason "Waiting for page fault."))
           (when (functionp event)
-;            (wg-msg "~a" (mp:mailbox-count *paging-mailbox*))
             (funcall event))
           (setf event nil))))))
 
 
-(defun simplify-worker (previous current rest)
-  (if (null rest)
-    ;; Nothing in rest, end processing
-    (append previous (list current))
-    ;; Compare current with first of rest
-    (if (= (- (car (first rest)) (cdr current)) 1)
-      (simplify-worker previous (cons (car current) (cdr (first rest)))
-                       (rest rest))
-      (simplify-worker (append previous (list current))
-                       (first rest)
-                       (rest rest)))))
-
 (defun simplify-pages (pages)
-  (let ((ordered (sort pages #'< :key #'car)))
-    (simplify-worker nil (first ordered) (rest ordered))))
-    
+  "Merge descriptor cells of neighboring pages."
+  (labels ((worker (previous current rest)
+             (if (null rest)
+               ;; Nothing in rest, end processing
+               (append previous (list current))
+               ;; Compare current with first of rest
+               (if (= (- (car (first rest)) (cdr current)) 1)
+                 (worker previous (cons (car current) (cdr (first rest)))
+                         (rest rest))
+                 (worker (append previous (list current))
+                         (first rest)
+                         (rest rest))))))
+    (let ((ordered (sort pages #'< :key #'car)))
+      (worker nil (first ordered) (rest ordered)))))
+
+
 (defun load-page (obj from &optional (upto 0 upto-provided-p))
+  "Load a single page."
   (with-slots (dbview query id-temp-table page-size) obj
     (with-db-context
       (apply #'select-simple-by-temp
@@ -221,7 +219,9 @@
                            :offset from
                            :order-by (view-order dbview)))))))
 
+
 (defun reloader (obj missing-pages)
+  "Worker fn for the paging listener: it loads MISSING-PAGES and refreshes the gui."
   (with-browser-locked (obj)
     (lambda ()
       (dolist (pair (simplify-pages missing-pages))
@@ -236,33 +236,23 @@
       (capi:apply-in-pane-process
        obj
        #'(lambda ()
-;         (wg-msg "~a" (simplify-pages missing-pages))
-;         (save-selection obj)
            (setf (capi:collection-items (mclp obj)) (spread obj))
-;         (restore-selection obj)
-           (capi:scroll (mclp obj) :vertical :move (pos obj))
-           )))))
+           (capi:scroll (mclp obj) :vertical :move (pos obj)))))))
 
 
 (defmethod current-page ((obj browser))
+  "Number of the page pos resides in."
   (floor (pos obj) (page-size obj)))
 
 
-(defmethod in-mid-page-p ((obj browser))
-  (with-slots (page-size pos) obj
-    (let* ((current (current-page obj))
-           (start   (* current page-size)))
-      (<= start pos (1- (+ start page-size))))))
-
-
 (defmethod relevant-pages ((obj browser))
+  "List the description cells for the ideal loaded pages for pos."
   (with-slots (pos page-size max-pages source-row-count) obj
     (let* ((1dir    (floor max-pages 2))
            (current (current-page obj))
            (first   (max (- current 1dir) 0))
            (last    (min (+ current 1dir)
                          (floor source-row-count page-size))))
-;      (wg-msg "Current: ~a~%First: ~a~%Last: ~a" current first last)
       (loop for i from first upto last
             for f = (* i page-size)
             for l = (min (1- (+ f page-size))
@@ -270,9 +260,9 @@
             collecting (cons f l)))))
 
 
-;(defparameter *pages-loading* nil) ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 (defmethod refresh-pages ((obj browser))
+  "Calculate ideal pageset, empty irrelevant pages and
+   send fn to load the missing pages to the paging listener."
   (with-browser-locked (obj)
     (with-slots (pos page-size max-pages source-row-count pages) obj
       (let ((relevant (relevant-pages obj)))
@@ -288,9 +278,8 @@
                       (setf (aref (spread obj) i) nil))))
             ;; Refreshing PAGES in OBJ
             (setf (pages obj) relevant)
-            ;; Query data for missing pages
+            ;; Send loader fn to the paging listener
             (when to-load
-;            (wg-msg "Loading: ~a" to-load)
               (loop for retry from 0 below 100  ;  make conditions to allow longer wait
                     until *paging-mailbox*
                     doing (sleep 0.01))
@@ -298,36 +287,26 @@
 
 
 (defun start-vscroll-listener (obj)
+  "Read vertical scrollbar position in a loop;
+   call REFRESH-PAGES when the slug wanders off the current page."
   (mp:process-run-function
    "Vertical scroll listener" ()
    #'(lambda ()
        (loop for pos = (capi:get-scroll-position (mclp obj) :vertical) doing
-#|             (unless (eq pos (pos obj))
-               (setf (pos obj) pos
-                     (capi:title-pane-text (disp obj))
-                     (format nil "~a" pos)))
-             (when (and pos
-                        (set-exclusive-or (pages obj) (relevant-pages obj)))
-               (refresh-pages obj))|#
              (unless (eq pos (pos obj))
                (with-browser-locked (obj)
                  (setf (pos obj) pos
                        (capi:title-pane-text (disp obj)) (format nil "~a" pos)))
                (when (numberp pos)
-;                 (let* ((a (pages obj))
-;                        (b (relevant-pages obj))
-;                        (changed (set-exclusive-or (pages obj) (relevant-pages obj))))
-;                   (wg-msg "~a~%~a" a b)
                    (when (set-exclusive-or (pages obj) (relevant-pages obj))
-                     (refresh-pages obj))
-;                   )
-                 ))
-             (sleep 0.3)))))
+                     (refresh-pages obj))))
+             (sleep 0.3))))) ; -> globals!
 
 
 ;;; Create browser ------------------------
 
 
+;; Temporal test fn to switch between queries
 (defparameter *tks* '(nil "%Egri%" "%Baja%" "%Debrecen%" "%Külsõ-Pest%"))
 (defparameter *tksi* 0)
 (defun next-query ()
@@ -340,11 +319,15 @@
       (setf *tksi* 0))
     result))
 
+
 (defmethod save-selection ((obj browser))
+  "Save the list of currently selected elements into OBJ."
   (with-browser-locked (obj)
     (setf (selection obj) (capi:choice-selection (mclp obj)))))
 
+
 (defmethod restore-selection ((obj browser))
+  "Select items that stored in OBJ."
   (capi:apply-in-pane-process
    (mclp obj)
    #'(lambda ()
@@ -353,9 +336,10 @@
                (selection obj))))))
 
 
-
 (defun init-query (interface)
+  "Init browser to show the current query."
   (with-browser-locked (interface)
+    ;; Init pos, pages & selection
     (setf (pos interface) 0
           (pages interface) '()
           (selection interface) '())
@@ -364,17 +348,20 @@
     (init-query-tempid interface)
     (init-row-count interface)
     (setf (spread interface)
-          (make-array (source-row-count interface)
-                      :element-type 'list :initial-element nil))
+          (make-array
+           (source-row-count interface)
+           :element-type 'list :initial-element nil))
     ;; Load initial pages to spread
-    (refresh-pages interface)
-    ;; Selection callbacks
-    ))
+    (refresh-pages interface)))
 
-(defun kill (&rest args) (declare (ignore args)))
 
-(defun init-vscroll (interface paging-listener)
-  ;; Starting listeners
+(defun kill (&rest args)
+  "Stop the paging & vscroll listeners, clean up and destroy the browser."
+  (declare (ignore args)))
+
+(defun init-vscroll-and-killswitch (interface paging-listener)
+  "Start the vscroll listener and set up the KILL fn."
+  ;; Starting listener
   (let* ((vscroll-listener (start-vscroll-listener interface))
          (killer           #'(lambda (&rest args)
                                (declare (ignore args))
@@ -389,6 +376,7 @@
     (setf (capi:button-press-callback (lower-button interface)) killer
           (symbol-function 'kill) killer)))
 
+
 (defun make-browser (view)
   "Create & initialize browser window."
   (multiple-value-bind (row-height header-height)
@@ -396,30 +384,27 @@
     (let ((interface
            (make-instance
             'browser
-            :columns         (mapcar #'(lambda (label)
-                                         (list :title label))
-                                     (view-labels view))
-            :dbview          view
-            :row-height      row-height
-            :header-height   header-height
-            :max-pages       5
-            :upper-button    #'(lambda (interface)
-                                 (setf (query interface)
-                                       (next-query))
-                                 (init-query interface))
-            :selected-button #'(lambda (interface)
-                                 (wg-msg "~a" (selection interface)))
+            :columns            (mapcar #'(lambda (label)
+                                            (list :title label))
+                                        (view-labels view))
+            :dbview             view
+            :row-height         row-height
+            :header-height      header-height
+            :max-pages          5
+            :upper-button       #'(lambda (interface)
+                                    (setf (query interface)
+                                          (next-query))
+                                    (init-query interface))
+            :selected-button    #'(lambda (interface)
+                                    (wg-msg "~a" (selection interface)))
             
             :selection-callback #'save-selection
             :extend-callback    #'save-selection
-            :retract-callback   #'save-selection
-            ))
-          (paging-listener  (start-paging-listener))
-          )
+            :retract-callback   #'save-selection))
+          (paging-listener      (start-paging-listener)))
       (init-query interface)
-      (init-vscroll interface paging-listener)
+      (init-vscroll-and-killswitch interface paging-listener)
       interface)))
-
 
 
 ;;; ----------------------------------------------------------------------
@@ -427,18 +412,5 @@
 
 
 (defun test06 ()
-  "Browser"
   (let ((browser (make-browser :main)))
-    (capi:display browser)
-
-#|    (sleep 10)
-    (setf (selection browser) '(2 4 6 8 10))
-    (restore-selection browser)|#
-    
-    ))
-
-
-(defun test07 ()
-  "Count selection"
-  (with-db-context
-    (count-simple (view-columns :main))))
+    (capi:display browser)))
