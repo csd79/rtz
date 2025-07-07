@@ -210,9 +210,24 @@
   (mapcar #'second (view-meat view)))
 
 
+(defun view-colwidths (view)
+  "Return column widths of VIEW."
+  (mapcar #'third (view-meat view)))
+
+
 (defun view-order (view)
   "Return the default ordering for VIEW."
   (getf (view view) :order))
+
+
+(defun column-type (column table)
+  "Determine type of COLUMN in TABLE."
+  (destructuring-bind (&key type desc &allow-other-keys)
+      (select-column column table)
+    (cond ((eq type :date) type)
+          ((member 'text desc) :string)
+          ((member 'integer desc) :integer)
+          (t nil))))
 
 
 ;;; ----------------------------------------------------------------------

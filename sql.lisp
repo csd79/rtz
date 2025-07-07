@@ -492,11 +492,11 @@
       (first (elt result 0)))))
 
 
-(defun select-simple-id-into-temp (columns &key (where '()) (temp ""))
+(defun select-simple-id-into-temp (columns &key (where '()) (order-by '()) (temp ""))
   "Create table TEMP and select COLUMN (presumably and id) into it."
   (unless (string= temp "")
     (let* ((select-substatement (verify-statements (:execute nil)
-                                  (select-simple columns :where where)))
+                                  (select-simple columns :where where :order-by order-by)))
            (full-statement      (format nil "create table ~a as ~a"
                                         temp
                                         select-substatement)))

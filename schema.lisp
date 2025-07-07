@@ -35,9 +35,11 @@
                  :import "Tanúsítvány sorozatszáma")
                 (:column t_ervenyesseg_kezdete
                  :desc (text)
+                 :type :date
                  :import "Tanúsítvány érvényességének kezdete")
                 (:column t_ervenyesseg_vege
                  :desc (text)
+                 :type :date
                  :import "Tanúsítvány érvényességének vége")
                 (:column t_tipus_id
                  :desc (integer))
@@ -47,6 +49,7 @@
                  :desc (integer))
                 (:column t_visszavonas_datuma
                  :desc (text)
+                 :type :date
                  :import "Visszavonás idõpontja"))
       :new-only nil)
 
@@ -136,6 +139,7 @@
                  :desc (integer))
                 (:column szul_datuma
                  :desc (text not null)
+                 :type :date
                  :import "Születési dátum"))
       :new-only t)
 
@@ -177,32 +181,32 @@
     (:main
      (:id      igenyles_id
       :order   (igenyles_id asc)
-      :columns ((igenyles_id "ID");;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-                (tank_kozpont "Tankerületi központ")
-                (szerv_egys "Intézmény")
-                (beosztas "Beosztás")
-                (viselt_csaladnev "Családnév")
-                (viselt_utonev_1 "1. utónév")
-                (viselt_utonev_2 "2. utónév")
-                (szul_csaladnev "Szül. családnév")
-                (szul_utonev_1 "Szül. 1. utónév")
-                (szul_utonev_2 "Szül. 2. utónév")
-                (anya_csaladnev "Anya leánykori családnév")
-                (anya_utonev_1 "Anya leánykori 1. utónév")
-                (anya_utonev_2 "Anya leánykori 2. utónév")
-                (orszag "Születési ország")
-                (varos "Születési város")
-                (szul_datuma "Születési dátum")
-                (igazolvanyszam "Igazolványszám")
-                (telefon "Telefonszám")
-                (email "E-mail cím")
-                (t_sorozatszam "Tanúsítvány sorozatszám")
-                (t_ervenyesseg_kezdete "Tanúsítvány érvényesség kedzete")
-                (t_ervenyesseg_vege "Tanúsítvány érvényesség vége")
-                (t_tipus "Tanúsítvány típusa")
-                (t_kapcs_eszkoz "Kapcsolódó eszköz")
-                (t_allapot "Tanúsítvány státusza")
-                (t_visszavonas_datuma "Visszavonás dátuma"))))
+      :columns ((igenyles_id           "ID"                              60);;;;;;;;;;;;;;;;
+                (tank_kozpont          "Tankerületi központ"             140)
+                (szerv_egys            "Intézmény"                       200)
+                (beosztas              "Beosztás"                        140)
+                (viselt_csaladnev      "Családnév"                       90)
+                (viselt_utonev_1       "1. utónév"                       90)
+                (viselt_utonev_2       "2. utónév"                       90)
+                (szul_csaladnev        "Szül. családnév"                 90)
+                (szul_utonev_1         "Szül. 1. utónév"                 90)
+                (szul_utonev_2         "Szül. 2. utónév"                 90)
+                (anya_csaladnev        "Anya leánykori családnév"        90)
+                (anya_utonev_1         "Anya leánykori 1. utónév"        90)
+                (anya_utonev_2         "Anya leánykori 2. utónév"        90)
+                (orszag                "Születési ország"                90)
+                (varos                 "Születési város"                 90)
+                (szul_datuma           "Születési dátum"                 80)
+                (igazolvanyszam        "Igazolványszám"                  80)
+                (telefon               "Telefonszám"                     90)
+                (email                 "E-mail cím"                      140)
+                (t_sorozatszam         "Tanúsítvány sorozatszám"         160)
+                (t_ervenyesseg_kezdete "Tanúsítvány érvényesség kedzete" 80)
+                (t_ervenyesseg_vege    "Tanúsítvány érvényesség vége"    80)
+                (t_tipus               "Tanúsítvány típusa"              90)
+                (t_kapcs_eszkoz        "Kapcsolódó eszköz"               90)
+                (t_allapot             "Tanúsítvány státusza"            90)
+                (t_visszavonas_datuma  "Visszavonás dátuma"              80))))
 
 
     :filters

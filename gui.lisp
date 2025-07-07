@@ -25,17 +25,19 @@
    (pages             :accessor pages             :initform '())
    (pos               :accessor pos               :initform 0)
    (selection         :accessor selection         :initform '())
+   (popup-selection   :accessor popup-selection   :initform '())
+   (popup-values      :accessor popup-values      :initform '())
    (lock              :accessor lock              :initform (mp:make-lock)))
 
   (:panes
    ;; ...filtering...
 
-   (upper-button
+   (reset-query
     capi:push-button
-    :accessor upper-button
-    :text "Lekérdezés váltása"
+    :accessor reset-query
+    :text "Rendezés/szûrés kikapcsolása"
     :callback-type :interface
-    :callback (:initarg :upper-button))
+    :callback (:initarg :reset-query))
 
    (selected
     capi:push-button
@@ -53,6 +55,8 @@
     capi:multi-column-list-panel
     :accessor             mclp
     :columns              (:initarg :columns)
+    :header-args          (:initarg :header-args)
+    :auto-reset-column-widths nil
     :items                (:initarg :mclp-data)
     :interaction          :extended-selection
     :items-get-function   #'svref
@@ -67,7 +71,8 @@
     :extend-callback      (:initarg :extend-callback)
     :retract-callback     (:initarg :retract-callback)
     :callback-type        :interface
-    :keep-selection-p     t)
+    :keep-selection-p     t
+    )
 
 
    ;; ...import/export/exit...
@@ -80,7 +85,7 @@
     :callback (:initarg :lower-button)))
 
    (:layouts
-    (upper capi:row-layout '(upper-button selected disp))
+    (upper capi:row-layout '(reset-query selected disp))
     (lower capi:row-layout '(lower-button))
     (default capi:column-layout '(upper mclp lower)))
 
@@ -97,7 +102,6 @@
     :vertical-scroll-allowed t
     :mclp-data #()
 
-    :upper-button nil
     :lower-button nil
     :query '()
 
@@ -142,12 +146,14 @@
   (with-browser-locked (obj)
     (with-slots (id-temp-table) obj
       (unless (string= id-temp-table "")
-        (drop-table id-temp-table)
+        (ignore-errors;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+          (drop-table id-temp-table))
         (setf id-temp-table "")))))
 
 
 (defmethod init-query-tempid ((obj browser))
   "Refresh ID temp table."
+  (wg-msg "wazzzzzzz: ~a" (query obj))
   (with-db-context
     (with-slots (id-temp-table) obj
       ;; Delete any existing temporary id table.
@@ -222,8 +228,8 @@
 
 (defun reloader (obj missing-pages)
   "Worker fn for the paging listener: it loads MISSING-PAGES and refreshes the gui."
-  (with-browser-locked (obj)
-    (lambda ()
+  (lambda ()
+    (with-browser-locked (obj)
       (dolist (pair (simplify-pages missing-pages))
         ;; For every missing page, load the page...
         (let ((new (load-page obj (car pair) (cdr pair))))
@@ -377,6 +383,232 @@
           (symbol-function 'kill) killer)))
 
 
+;;; Selection popup -----------------------
+
+
+(defparameter *header-popup-items*
+  '(;; Sorting
+    (("Rendezés nélkül")
+     ("Rendezés növekvõ sorrendbe"  ()                           :order-by (asc)         nil         ())
+     ("Rendezés csökkenõ sorrendbe" ()                           :order-by (desc)        nil         ()))
+    ;; Filtering
+    (("Szûrés nélkül")
+     ("Tartalmazza ..."             ("Tartalmazza")              :where    (like)        "%~a%"      (:date :string))
+     ("Nem tartalmazza ..."         ("Nem tartalmazza")          :where    (not like)    "%~a%"      (:date :string))
+     ("Kisebb ..."                  ("Kisebb mint")              :where    (<)           "~a"        (:date :integer))
+     ("Nagyobb ..."                 ("Nagyobb mint")             :where    (>)           "~a"        (:date :integer))
+     ("Kisebb vagy egyenlõ ..."     ("Kisebb vagy egyenlõ")      :where    (<=)          "~a"        (:date :integer))
+     ("Nagyobb vagy egyenlõ ..."    ("Nagyobb vagy egyenlõ")     :where    (>=)          "~a"        (:date :integer))
+     ("Értékhatárok között ..."     ("Alsó határ" "Felsõ határ") :where    (between)     "~a and ~a" (:date :integer))
+     ("Értékhatárokon kívül ..."    ("Alsó határ" "Felsõ határ") :where    (not between) "~a and ~a" (:date :integer))
+#|     ("Kiválasztott" 0)
+     ("Nem kiválasztott" 0)|#
+     )))
+
+(defparameter *header-popup-items-exlusivity*
+  '(t nil))
+
+
+(defun hpi-label-subs (element label)
+  (let ((pos (position label (nth element *header-popup-items*) :key #'first :test #'string=)))
+    (rest (nth pos (nth element *header-popup-items*)))))
+
+
+(defun hpi-label-value (element label)
+  (if (eq label :default) 0
+    (or (position label (nth element *header-popup-items*) :key #'first :test #'string=)
+;    (or (position label (nth element *header-popup-items*) :test #'string=)
+        0)))
+
+(defun hpi-value-label (element value)
+  (first (nth value (nth element *header-popup-items*))))
+;  (nth value (nth element *header-popup-items*)))
+
+
+(defun element (label)
+  (position-if #'(lambda (sublist)
+                   (position label sublist :key #'first :test #'string=))
+;                   (position label sublist :test #'string=))
+               *header-popup-items*))
+
+
+(defun exclusive-element-p (label)
+  (nth (element label) *header-popup-items-exlusivity*))
+
+
+(defmethod set-popup-selection ((obj browser) column element label)
+  (setf (nth element (nth column (popup-selection obj)))
+        (hpi-label-value element label)))
+
+
+(defmethod get-popup-selection ((obj browser) column element)
+  (hpi-value-label
+   element
+   (nth element (nth column (popup-selection obj)))))
+
+
+(defmethod init-popup ((obj browser))
+  (let ((column-count (length (view-columns (dbview obj)))))
+    (setf (popup-selection obj)
+          (loop for i from 0 below column-count collecting
+                (loop for j from 0 below (length *header-popup-items*) collecting 0)))
+    (setf (popup-values obj)
+          (loop for i from 0 below column-count collecting '()))))
+
+
+(defmethod get-popup-values ((obj browser) column)
+  (nth column (popup-values obj)))
+
+
+(defmethod set-popup-values ((obj browser) column values)
+  (setf (nth column (popup-values obj)) values))
+
+
+(defmethod save-popup-selection ((obj browser) column label)
+;  (wg-msg "Column: ~a;     Label: ~a" column label)
+  (let* ((element     (element label))
+         (exclusive-p (exclusive-element-p label))
+         (previous    (get-popup-selection obj column element)))
+    ;; Save new selection
+    (set-popup-selection obj column element label)
+    ;; When selection changed:
+    (when (string/= label previous)
+      ;; Also, when element is exclusive, set element in other columns to default
+      (when exclusive-p
+        (loop for i from 0 below (length (popup-selection obj)) doing
+              (when (/= i column)
+                (set-popup-selection obj i element :default)))))))
+
+
+(defun popup-dialog (obj labels)
+  (let ((panes (mapcar #'(lambda (label)
+                           (make-instance 'capi:text-input-pane :callback-type :data :title label))
+                       labels))
+        (mclp  (mclp obj)))
+    (multiple-value-bind (x y)
+        (capi:current-pointer-position :relative-to mclp)
+      (capi:popup-confirmer
+       (capi:make-container panes)
+       "Érték(ek) megadása"
+       :value-function #'(lambda (arg)
+                           (declare (ignore arg))
+                           (mapcar #'capi:text-input-pane-text panes))
+       :x x :y y :position-relative-to mclp
+       :window-styles '(:borderless :movable-by-window-background)))))
+
+
+(defmethod save-popup-values ((obj browser) column label)
+  (let* ((element (element label))
+         (subs    (hpi-label-subs element label))
+         (params  (first subs))
+         (vals    (when params
+                    (popup-dialog obj params))))
+    (when (notany #'(lambda (e)
+                      (and (stringp e) (string= e "")))
+                  vals)
+      (set-popup-values obj column vals))
+    (or vals
+        (not params))))
+    
+
+(defmethod resolve-single-clauses ((obj browser) column subs values)
+;  (destructuring-bind (labels keyword ops &optional format)
+  (destructuring-bind (labels keyword ops format types)
+      subs
+    (declare (ignore labels types))
+    (append (list keyword 
+                  (nth column (view-columns (dbview obj))))
+            ops
+            (when (and format values)
+              (list (apply #'format nil format values))))))
+
+
+(defun reduce-clauses (heap)
+  (let* ((keywords (remove-duplicates (mapcar #'first heap))))
+    (mapcar #'(lambda (keyword)
+                (let ((relevants (remove-if-not
+                                  #'(lambda (row)
+                                      (eq (first row) keyword))
+                                  heap)))
+                  (list keyword
+                        (butlast (apply #'append (mapcar #'(lambda (subexpr)
+                                                             (list (rest subexpr) 'and))
+                                                         relevants))))))
+            keywords)))
+
+
+(defmethod trigger-new-query ((obj browser))
+  (let ((heap   '())
+        (result nil))
+    (loop for column from 0
+          for selection in (popup-selection obj)
+          for values in (popup-values obj) doing
+          (loop for element from 0
+                for num in selection
+                for label = (hpi-value-label element num)
+                for subs = (hpi-label-subs element label) doing
+                (when subs
+                  (push (resolve-single-clauses obj column subs values)
+                        heap))))
+    (setf result (reduce-clauses (nreverse heap)))
+    (setf (query obj) (apply #'append result))
+    (init-query obj)))
+;    (wg-msg "~{~a~%~}" (query obj))))
+;    (wg-msg "~{~a~%~}" result)))
+
+
+(defmethod restore-popup-selection((obj browser) elements column)
+  (loop for i from 0
+        for element in elements doing
+        (setf (capi:choice-selection element)
+              (hpi-label-value i (get-popup-selection obj column i)))))
+
+
+(defmethod applicable-popup-items ((obj browser) column)
+  (let* ((colmn (nth column (view-columns (dbview obj))))
+         (table (first (table colmn :primary-key-allowed t)))
+         (type  (column-type colmn table)))
+    (mapcar #'(lambda (element)
+                (remove-if-not #'(lambda (item)
+                                   (let ((sixth (sixth item)))
+;                                     (wg-msg "~a   ~a   ~a" column colmn table)
+;                                     (wg-msg "~a     ~a" type sixth)
+                                     (or (not sixth)
+                                         (and sixth
+                                              (member type sixth)))))
+                               element))
+            *header-popup-items*)))
+
+
+(defun header-popup (interface column)
+  (let ((elements
+         (mapcar #'(lambda (element)
+                     (make-instance
+                      'capi:menu-component
+                      :items (mapcar #'first element)
+;                      :items element
+                      :interaction :single-selection
+                      :callback #'(lambda (data interface)
+                                    (when (save-popup-values interface column data)
+                                      (save-popup-selection interface column data)
+                                      (trigger-new-query interface)))))
+;                 *header-popup-items*)))
+                 (applicable-popup-items interface column))))
+    (restore-popup-selection interface elements column)
+    (make-instance 'capi:menu :items elements)
+;    (wg-msg "~a" elements)
+    ))
+
+
+(defmethod reset ((obj browser))
+  (setf (query obj) '())
+  (init-popup obj)
+  (init-query obj))
+
+
+;;; BROWSER -------------------------------
+
+
 (defun make-browser (view)
   "Create & initialize browser window."
   (multiple-value-bind (row-height header-height)
@@ -384,17 +616,37 @@
     (let ((interface
            (make-instance
             'browser
-            :columns            (mapcar #'(lambda (label)
-                                            (list :title label))
-                                        (view-labels view))
+            :columns            (mapcar #'(lambda (label colwidth)
+                                            (list :title label
+                                                  :width colwidth
+                                                  :visible-min-width 20
+                                                  ))
+                                        (view-labels view)
+                                        (view-colwidths view))
+            :header-args        `(:selection-callback
+                                  ,#'(lambda (item interface)
+                                       (let ((column (position item (view-labels (dbview interface))
+                                                               :test #'string=)))
+                                         (multiple-value-bind (x y)
+                                             (capi:current-pointer-position
+;                                              :relative-to interface)
+                                              :relative-to (mclp interface))
+                                           (capi:display-popup-menu
+                                            (header-popup interface column)
+                                            :owner (mclp interface)
+                                            :button :button-1
+                                            :x x :y y
+                                            ))))
+                                  :callback-type :item-interface)
             :dbview             view
             :row-height         row-height
             :header-height      header-height
             :max-pages          5
-            :upper-button       #'(lambda (interface)
+            :reset-query        #'reset
+#|            (lambda (interface)
                                     (setf (query interface)
                                           (next-query))
-                                    (init-query interface))
+                                    (init-query interface))|#
             :selected-button    #'(lambda (interface)
                                     (wg-msg "~a" (selection interface)))
             
@@ -402,8 +654,11 @@
             :extend-callback    #'save-selection
             :retract-callback   #'save-selection))
           (paging-listener      (start-paging-listener)))
+      (init-popup interface)
       (init-query interface)
-      (init-vscroll-and-killswitch interface paging-listener)
+      (sleep 2) ; Without this, setting the column widths would mess with the next step.
+      (with-browser-locked (interface)
+        (init-vscroll-and-killswitch interface paging-listener))
       interface)))
 
 
