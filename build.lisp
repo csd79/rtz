@@ -7,7 +7,7 @@
 (in-package "SIG")
 (setf *independent-exe* t)
 (lw:deliver 'start
-    "c:\\Users\\cselovszkid\\common-lisp\\sig\\sig_v0.22.exe"
+    "c:\\Users\\cselovszkid\\common-lisp\\sig\\sig_v0.23.exe"
     5
     :interface :capi
     :console :io
