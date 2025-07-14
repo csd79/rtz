@@ -8,7 +8,8 @@
 ;;; Globals
 
 
-(defparameter *db-location* #P"//kozpfs/Homes/Cselovszkid/")
+(defparameter *db-location* #P"//kozpfs/Org/Jogi és Személyügyi Fõosztály/Személyügyi Osztály/CsD/sig/")
+;Homes/Cselovszkid/")
 (defparameter *db-name* "sig.db")
 (define-symbol-macro %dbfile% (merge-pathnames *db-name* *db-location*))
 

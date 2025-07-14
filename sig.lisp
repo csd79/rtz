@@ -96,5 +96,5 @@
 
 
 (defun start ()
-  "'main'"
-  nil)
+  (let ((browser (make-browser :main)))
+    (capi:display browser)))

@@ -13,31 +13,11 @@ Beállítások
   Alapértelemzett szűrés
 
 Szűrés / keresés
-  Legyen egy lista, amibe szűrési feltételeket vehetünk fel
-  Mezők listázása
-  Melyik milyen típusú adatot fogadjon?
-  Érték választás listából (bizonyos oszlopoknál?)
-  Dzsóker * (SQL csak %-t tud kezelni, ezt cseréljük arra)
   Több érték kiválasztása (több TK)
-  Dátumnál előtte, utána, között
+  Dátumnál formátum átírása év-hónap-napra
   Mutassa a stornózott/lejárt/érvénytelen sorokat?
   Vegye figyelembe az alapértelmezett szűrést? (alapértelmezésben igen - ez felhasználónként más TK csoportot jelent
   Legyen egy ad-hoc változat, ami minden mezőben keres, implicit * (?)
-
-Rendezés
-  Egy másik lista, ahol rendezési veltételeket vehetünk fel prioritási sorba
-
-=  !=  <  >  <=  >=  IN  BETWEEN  NOT       AND
-col ASC / DESC
-
-
-
-
-
-
-
-
-
 
 
 

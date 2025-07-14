@@ -32,10 +32,59 @@
   (:panes
    ;; ...filtering...
 
+
+   
+   (new-record
+    capi:push-button
+    :accessor new-record
+    :text "Új rekord bevitele"
+    :callback-type :interface
+    :callback (:initarg :new-record))
+
+   (update
+    capi:push-button
+    :accessor update
+    :text "Módosítás"
+    :callback-type :interface
+    :callback (:initarg :update))
+
+   (import-em
+    capi:push-button
+    :accessor import-em
+    :text "Importálás"
+    :callback-type :interface
+    :callback (:initarg :import-em))
+
+   (export-em
+    capi:push-button
+    :accessor export-em
+    :text "Exportálás"
+    :callback-type :interface
+    :callback (:initarg :export-em))
+
+   (invalidate
+    capi:push-button
+    :accessor invalidate
+    :text "Storno"
+    :callback-type :invalidate
+    :callback (:initarg :invalidate))
+
+
+
+
+
+
+
+   
+
+
+
+
+   
    (reset-query
     capi:push-button
     :accessor reset-query
-    :text "Rendezés/szûrés kikapcsolása"
+    :text "Rendezés/szûrés alaphelyzetbe"
     :callback-type :interface
     :callback (:initarg :reset-query))
 
@@ -72,22 +121,28 @@
     :retract-callback     (:initarg :retract-callback)
     :callback-type        :interface
     :keep-selection-p     t
+;    :background          :red ; IT'S WOIKINNN!!!!!!!
+;    :color-function       #'(lambda (panel item state)
+;                              (wg-msg "~a~%~a~%~a" panel item state))
     )
 
 
    ;; ...import/export/exit...
 
-   (lower-button
+#|   (lower-button
     capi:push-button
     :accessor lower-button
     :text "Kill-lépés"
     :callback-type :interface
-    :callback (:initarg :lower-button)))
+    :callback (:initarg :lower-button))|#
+   )
 
    (:layouts
-    (upper capi:row-layout '(reset-query selected disp))
-    (lower capi:row-layout '(lower-button))
-    (default capi:column-layout '(upper mclp lower)))
+    (upper1 capi:row-layout '(new-record update import-em export-em invalidate))
+    (upper2 capi:row-layout '(reset-query selected disp))
+;    (lower capi:row-layout '(lower-button))
+;    (default capi:column-layout '(upper mclp lower)))
+    (default capi:column-layout '(upper1 upper2 mclp)))
 
    (:default-initargs
     :display-state :normal
@@ -102,12 +157,22 @@
     :vertical-scroll-allowed t
     :mclp-data #()
 
-    :lower-button nil
+;    :lower-button nil
     :query '()
 
     :selection-callback nil
     :extend-callback nil
-    :retract-callback nil))
+    :retract-callback nil
+
+    :new-record nil
+    :update nil
+    :invalidate nil
+    :import-em nil
+    :export-em nil
+    ))
+
+
+ 
 
 
 (defun calculate-row-height ()
@@ -153,7 +218,7 @@
 
 (defmethod init-query-tempid ((obj browser))
   "Refresh ID temp table."
-  (wg-msg "wazzzzzzz: ~a" (query obj))
+;  (wg-msg "wazzzzzzz: ~a" (query obj))
   (with-db-context
     (with-slots (id-temp-table) obj
       ;; Delete any existing temporary id table.
@@ -378,9 +443,13 @@
                                  (with-db-context 
                                    (drop-temp-table interface))
                                  (capi:destroy interface)))))
-    ;; Set lower button to kill listeners
-    (setf (capi:button-press-callback (lower-button interface)) killer
-          (symbol-function 'kill) killer)))
+    ;; Set close button to kill listeners
+    (setf
+#|     (capi:button-press-callback (lower-button interface)) killer
+          (symbol-function 'kill) killer|#
+          (capi:interface-destroy-callback interface)
+          killer
+          )))
 
 
 ;;; Selection popup -----------------------
@@ -580,6 +649,15 @@
             *header-popup-items*)))
 
 
+(defun view-columns-desc (view &optional (pre ""))
+  (mapcar #'(lambda (label colwidth)
+              (list :title (concatenate 'string pre label)
+                    :width colwidth
+                    :visible-min-width 20))
+          (view-labels view)
+          (view-colwidths view)))
+
+
 (defun header-popup (interface column)
   (let ((elements
          (mapcar #'(lambda (element)
@@ -590,6 +668,10 @@
                       :interaction :single-selection
                       :callback #'(lambda (data interface)
                                     (when (save-popup-values interface column data)
+;                                      (wg-msg "~a   ~a" data column)
+                                      (capi:modify-multi-column-list-panel-columns
+                                       (mclp interface)
+                                       :columns (view-columns-desc (dbview interface) "[*]  "))
                                       (save-popup-selection interface column data)
                                       (trigger-new-query interface)))))
 ;                 *header-popup-items*)))
@@ -606,7 +688,60 @@
   (init-query obj))
 
 
+;;; Export --------------------------------
+
+(defun import-from-xlsx (interface)
+  (declare (ignore interface))
+  (let* ((raws  (capi:prompt-for-files "Üzenet" :filter "*.xlsx" ))
+         (files (sort (mapcar #'namestring raws) #'string<=)))
+    (when files
+      (with-db-context
+        (let ((obj (make-instance 'wax-script :execute-fn #'import-xlsxs)))
+          (dolist (file files)
+            (add-data-source obj (intern (symbol-name (gensym)) :keyword)
+                             (namestring file)))
+          (wax-execute obj :errorsink-on nil)))
+      (reset interface)
+      )))
+
+
+(defun export-to-xlsx (obj)
+  (let ((file (str:ensure-suffix ".xlsx" (namestring (capi:prompt-for-file "Üzenet" :filter "*.xlsx"
+                                                                           :if-exists :ok :if-does-not-exist :ok))))
+        (data (with-browser-locked (obj)
+                (load-page obj 0))))
+    (with-wax-errorsink obj
+      (with-property-accessors
+        (setf (errorsink-on) nil
+              (property-accessors-on) t)
+        (with-workbook (:wbook wbook :wsvars (ws1) :save t)
+          ;; Save new workbook by name FILE.
+          (!saveas wbook file)
+          ;; Write headers
+          (let* ((labels (view-labels (dbview obj)))
+                 (width  (length labels)))
+            (setf (xrange ws1 1 1 width 1)
+                  (coerce labels 'vector))
+            ;; Write rows
+            (loop for raw across data
+                  for row = (mapcar #'(lambda (element)
+                                        (if (equalp element "NULL")
+                                          ""
+                                          element))
+                                    raw)
+                  for r from 2 doing
+                  (setf (xrange ws1 1 r width r)
+                        (coerce row 'vector))))
+          ;; Formatting
+          (autofit-cols ws1)
+          (freeze-panes ws1 :after-column 1 :after-row 1)
+;          (wg-msg "~a    ~a" file (type-of file))
+          )))))
+
+
 ;;; BROWSER -------------------------------
+
+
 
 
 (defun make-browser (view)
@@ -616,13 +751,14 @@
     (let ((interface
            (make-instance
             'browser
-            :columns            (mapcar #'(lambda (label colwidth)
+            :columns            (view-columns-desc view)
+#|            :columns            (mapcar #'(lambda (label colwidth)
                                             (list :title label
                                                   :width colwidth
                                                   :visible-min-width 20
                                                   ))
                                         (view-labels view)
-                                        (view-colwidths view))
+                                        (view-colwidths view))|#
             :header-args        `(:selection-callback
                                   ,#'(lambda (item interface)
                                        (let ((column (position item (view-labels (dbview interface))
@@ -637,7 +773,9 @@
                                             :button :button-1
                                             :x x :y y
                                             ))))
-                                  :callback-type :item-interface)
+                                  :callback-type :item-interface
+;                                  :background :red
+                                  )
             :dbview             view
             :row-height         row-height
             :header-height      header-height
@@ -652,7 +790,10 @@
             
             :selection-callback #'save-selection
             :extend-callback    #'save-selection
-            :retract-callback   #'save-selection))
+            :retract-callback   #'save-selection
+            :export-em #'export-to-xlsx
+            :import-em #'import-from-xlsx
+            ))
           (paging-listener      (start-paging-listener)))
       (init-popup interface)
       (init-query interface)

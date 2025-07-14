@@ -7,12 +7,14 @@
 (in-package "SIG")
 (setf *independent-exe* t)
 (lw:deliver 'start
-    "c:\\Users\\cselovszkid\\common-lisp\\sigorum\\sig_v0.21.exe"
+    "c:\\Users\\cselovszkid\\common-lisp\\sig\\sig_v0.22.exe"
     5
     :interface :capi
     :console :io
     :multiprocessing t
-    :icon-file "c:\\Users\\cselovszkid\\common-lisp\\sigorum\\img\\sigorum.ico"
+    :icon-file "c:\\Users\\cselovszkid\\common-lisp\\sig\\img\\sigorum.ico"
+    :keep-symbols '(*appdir* *independent-exe*)
+    :packages-to-keep-externals '(wax msoffice) ; fn-s called indirectly
     :keep-package-manipulation t
     :keep-function-name :all
     :keep-eval t
