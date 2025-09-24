@@ -48,6 +48,7 @@
 
 (defun resolve-values (table temp-columns temp-values)
   "Create hierarchical list of values to insert."
+;  (wg-msg "~a" temp-columns)
   (let ((columns (remove-if #'(lambda (column) (primary-key-p column table)) (schema-columns table))))
     (append (list :table table)
             (mapcar #'(lambda (column)
@@ -67,6 +68,33 @@
                             (list :column column
                                   (resolve-values foreign-table temp-columns temp-values)))))
                     columns))))
+#|(defun resolve-values (table temp-columns temp-values)
+  "Create hierarchical list of values to insert."
+  (let ((columns (remove-if #'(lambda (column) (primary-key-p column table)) (schema-columns table))))
+    (append (list :table table)
+;            (remove nil
+                    (mapcar #'(lambda (column)
+                                (let ((import-column (sql-name (column-import column table))))
+;                                (let ((import-column (column-import column table)))
+                                  (wg-msg "~a     ~a     ~a" import-column (type-of import-column) temp-columns)
+                                  (when (member import-column temp-columns :test #'string=)
+                                    (wg-msg "YEAAAAHHHHHH!!!!        ~a" import-column)
+                                    (if (immediate-p column table)
+                                      ;; COLUMN contains an immediate value
+                                      (let* ((from (sql-name import-column))
+                                             ;; Find value by it's import header's position in TEMP-COLUMNS
+                                             (pos  (position from temp-columns :test #'string=)))
+                                        (list :column column (nth pos temp-values)))
+                                      ;; COLUMN contains a foreign value
+                                      (let* ((many-joins (many-joins table))
+                                             ;; Find table for foreign index
+                                             (foreign-table (second (find-if #'(lambda (row)
+                                                                                 (eq column (third row)))
+                                                                             many-joins))))
+                                        ;; Create sublist for FOREIGN-TABLE
+                                        (list :column column
+                                              (resolve-values foreign-table temp-columns temp-values)))))))
+                            columns))));)|#
 
 
 (defun andeq (columns values)
@@ -109,6 +137,14 @@
       (pstep obj :step step)
       (pabort obj)
       )))
+
+
+;;; ----------------------------------------------------------------------
+;;; Single row insert / update
+
+
+(defun auto-insert (columns values &key (id nil id-provided-p))
+  )
 
 
 ;;; ----------------------------------------------------------------------

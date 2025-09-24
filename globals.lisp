@@ -8,6 +8,9 @@
 ;;; Globals
 
 
+(defparameter *appdir* "sig")
+(defparameter *independent-exe* nil)
+
 (defparameter *db-location* #P"//kozpfs/Org/Jogi és Személyügyi Fõosztály/Személyügyi Osztály/CsD/sig/")
 ;Homes/Cselovszkid/")
 (defparameter *db-name* "sig.db")
@@ -18,3 +21,6 @@
 (defparameter *auto-close* t)
 
 (defparameter *rows-per-statement* 10)
+
+(defparameter *locking-timeout* 10)
+(defparameter *page-size* 100) ; 5000

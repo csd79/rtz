@@ -111,6 +111,10 @@
   "Return temp table header to import value from."
   (getf (select-column column table) :import))
 
+(defun column-impersonal (column table)
+  "Tell whether column in mass-updateable."
+  (getf (select-column column table) :impersonal))
+
 
 (defun many-joins (table)
   "List joins defined for many-table TABLE."
@@ -228,6 +232,14 @@
           ((member 'text desc) :string)
           ((member 'integer desc) :integer)
           (t nil))))
+
+
+(defun view-impersonal (view)
+  "List impersonal columns from VIEW."
+  (remove-if #'(lambda (column)
+                 (let ((first (first column)))
+                   (not (column-impersonal first (first (table first :foreign-allowed t))))))
+             (getf (view view) :columns)))
 
 
 ;;; ----------------------------------------------------------------------
@@ -398,3 +410,34 @@
      ((empty-cell-p value) "NULL")                            ; empty cells will become NULLs
      (date (apply #'format nil "~4,'0d-~2,'0d-~2,'0d" date))  ; dates will be formed as 2020-01-05
      (t value))))                                             ; everything esle will pass as-is
+
+
+;;; ----------------------------------------------------------------------
+;;; Network pathnames
+
+
+(defun network-drives ()
+  "Return a list of Windows network drive connections as sublists (drive path)."
+  (let* ((outstream (make-string-output-stream))
+         (output    (progn (uiop:run-program "wmic path win32_mappedlogicaldisk get deviceid, providername" :output outstream)
+                      (get-output-stream-string outstream)))
+         (rows      (rest (str:split #\Newline output))))
+    (mapcar #'(lambda (string)
+                (let ((drive (subseq string 0 2))
+                      (path  (str:trim (subseq string 2))))
+                  (list drive path)))
+            (remove-if #'(lambda (string)
+                           (< (length string) 2))
+                       rows))))
+
+
+(defun resolve-network-filename (pathname)
+  "If PATHNAME refers to a location on a network drive, replace the drive designation with the true network path."
+  (let* ((namestring (namestring pathname))
+         (drives     (network-drives))
+         (result     namestring))
+    (dolist (pair drives)
+      (when (and (>= (length namestring) 2)
+                 (string-equal (first pair) (subseq namestring 0 2)))
+        (setf result (concatenate 'string (second pair) (subseq namestring 2)))))
+    (pathname result)))

@@ -1,0 +1,4 @@
+(insertdb columns values)
+
+(updatedb id columns values)
+

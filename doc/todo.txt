@@ -1,6 +1,9 @@
 --- SZÜKSÉGES: -----------------------------------------
 
 
+Ha importáláskor megszakítst nyomunk, a temp-ből fix-be történő átírás már nem áll le.
+
+
 Átállni az új igénylő formátumra import / exportáláskor!
 
 

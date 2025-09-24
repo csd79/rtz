@@ -9,9 +9,6 @@
 ;;; Browser
 
 
-(defparameter *locking-timeout* 10) ; -> globals!
-
-
 (capi:define-interface browser ()
   ((dbview            :accessor dbview            :initarg  :dbview)
    (header-height     :accessor header-height     :initarg  :header-height)
@@ -68,8 +65,15 @@
     capi:push-button
     :accessor invalidate
     :text "Storno"
-    :callback-type :invalidate
+    :callback-type :interface
     :callback (:initarg :invalidate))
+
+   (bsettings
+    capi:push-button
+    :accessor bsettings
+    :text "Beállítások"
+    :callback-type :interface
+    :callback (:initarg :bsettings))
 
    (reset-query
     capi:push-button
@@ -118,7 +122,7 @@
    )
 
    (:layouts
-    (upper1 capi:row-layout '(new-record update import-em export-em invalidate))
+    (upper1 capi:row-layout '(new-record update import-em export-em invalidate bsettings))
     (upper2 capi:row-layout '(reset-query selected disp))
     (default capi:column-layout '(upper1 upper2 mclp)))
 
@@ -130,7 +134,7 @@
     :visible-max-width :screen-width
     :visible-min-height '(/ :screen-height 2)
     :visible-max-height :screen-height
-    :page-size 100 ;50000, -> globals!
+    :page-size *page-size*
 
     :vertical-scroll-allowed t
     :mclp-data #()
@@ -199,6 +203,7 @@
       (drop-temp-table obj)
       ;; Create new temporary table.
       (setf id-temp-table (unique-table-name (user-token)))
+;      (wg-msg "ID-TEMP-TABLE inicialization!")
       (apply #'select-simple-id-into-temp
              (list (view-id (dbview obj)))
              (append (query obj)
@@ -215,9 +220,6 @@
                                                 (id-temp-table obj)))
                        0))))
       (setf (source-row-count obj) count))))
-
-
-;(defparameter *paging-mailbox* nil)
 
 
 (defmethod start-paging-listener ((obj browser))
@@ -393,23 +395,6 @@
            :element-type 'list :initial-element nil))
     ;; Load initial pages to spread
     (refresh-pages interface)))
-
-
-#|(defun init-vscroll-and-killswitch (interface paging-listener)
-  "Start the vscroll listener and set up the KILL fn."
-  ;; Starting listener
-  (let* ((vscroll-listener (start-vscroll-listener interface))
-         (killer           #'(lambda (&rest args)
-                               (declare (ignore args))
-                               (with-browser-locked (interface)
-                                 (mp:process-terminate vscroll-listener)
-                                 (mp:process-terminate paging-listener)
-                                 (setf *paging-mailbox* nil)
-                                 (with-db-context 
-                                   (drop-temp-table interface))
-                                 (capi:destroy interface)))))
-    ;; Set close button to kill listeners
-    (setf (capi:interface-destroy-callback interface) killer)))|#
 
 
 (defmethod init-killswitch ((obj browser))
@@ -739,14 +724,66 @@
           ;; Formatting
           (autofit-cols ws1)
           (freeze-panes ws1 :after-column 1 :after-row 1)
-          (wg-msg "~a" cnt)
-          (wg-msg "~a" (selection obj)))))))
+;          (wg-msg "~a" cnt)
+;          (wg-msg "~a" (selection obj))
+          )))))
+
+
+;;; Settings ------------------------------
+
+
+(defun settings ()
+  (let ((obj (make-instance 'wax-script)))
+    (init-state obj :last-user-id nil :db-file "")
+    (load-state obj :package-name "SIG")
+    (wg-window
+     "Beállítások"
+     180
+     "Adatbázisfájl" ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+     (wg-file-selector
+      "Adatbázisfájl"
+      "*.db"
+      '(".DB fájlok" "*.db" "Minden fájl" "*.*")
+      #'(lambda (text &rest rest)
+          (declare (ignore rest))
+          (let ((string (str:replace-all "\\" "/" text)))
+            (setf (get-state obj :db-file) string)))
+      (str:replace-all "/" "\\" (namestring (get-state obj :db-file)))
+      :cancel #'(lambda () (setf (get-state obj :db-file) nil)))
+     (wg-button ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+      "OK"
+      #'(lambda (interface)
+          (declare (ignore interface))
+          (setf (get-state obj :db-file)
+                (resolve-network-filename (get-state obj :db-file)))
+          (wg-msg "~a" (get-state obj :db-file))
+          (save-state obj :package-name "SIG"))))))
 
 
 ;;; New / update --------------------------
 
 
-(defun input-window (&optional (rows '()))
+(defun input-mode (modus length)
+  (case modus
+    (:new (cond ((zerop length) :new)
+                ((= length 1)   :new-like-one)
+                ((> length 1)   :new-like-many)))
+    (:modify (cond ((zerop length) :nothing)
+                   ((= length 1)   :modify-all)
+                   ((> length 1)   :modify-impersonal)))
+    (t nil)))
+
+
+(defun input-window (obj &optional (mode :new))
+  (let* ((selected (selected-records obj))
+         (mode     (input-mode mode (length selected))))
+    (wg-msg "~a  ~a" mode selected)))
+;         (impersonals (view-impersonal (dbview obj)))
+         
+
+
+
+#|(defun input-window (&optional (rows '()))
   (declare (ignore rows))
   (let ((data  '(:a "Hihi" :b "Haha" :c "Hoho")))
     (flet ((field (data key &optional (callback nil))
@@ -771,14 +808,17 @@
                                             (capi:text-input-pane-text pane)))
                                   '(:a :b :c)
                                   fields)
-                            (wg-msg "~a" data)))
+                            (wg-msg "~a" data)
+                            ))
                        (wg-button
                         "Mégsem"
                         nil)
                        )
-                 ))))))
+                 ))))))|#
 
 #|
+     KICSIT BÉNA, HOGY HA EGYSZER KIVÁLASZTUNK VALAMIT, AZT NEM LEHET UNSELECTELNI. HA EGY SOR LENNE KIVÁLASZTVA ÉS ÚJRA RÁKLIKKELNÉNK, MEGSZÛNHETNE A KIVÁLASZTÁS!
+
   Ha ROWS üres, új rekord
   Ha egy eleme van, azon rekord minden adata módosítható
   Ha több eleme van, a tömeges módosításra jelölt mezõk módosíthatók
@@ -817,27 +857,25 @@
             :max-pages          5
             :reset-query        #'reset-query
             :selected-button    #'(lambda (interface)
-;                                    (wg-msg "~a" (selection interface)))
                                     (wg-msg "~a" (selected-records interface)))
             :selection-callback #'save-selection
             :extend-callback    #'save-selection
             :retract-callback   #'save-selection
-            :export-em #'export-to-xlsx
-            :import-em #'import-from-xlsx)))
-;          (paging-listener      (start-paging-listener)))
+            :export-em  #'export-to-xlsx
+            :import-em  #'import-from-xlsx
+            :bsettings  #'settings
+            :new-record #'(lambda (interface) (input-window interface :new))
+            :update     #'(lambda (interface) (input-window interface :modify))
+            )))
       ;; STAGE 2
       (start-paging-listener interface)
       (reset-query interface)
-;      (init-popup interface)
-;      (init-query interface)
       (sleep 2) ; Without this, setting the column widths would mess with the next step.
                 ; perhaps every init step should be wrapped inside its own WITH-BROWSER-LOCKED
       ;; PHASE 3
       (with-browser-locked (interface)
         (start-vscroll-listener interface)
-        (init-killswitch interface)
-;        (init-vscroll-and-killswitch interface paging-listener)
-        )
+        (init-killswitch interface))
       interface)))
 
 

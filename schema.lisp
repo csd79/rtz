@@ -50,7 +50,9 @@
                 (:column t_visszavonas_datuma
                  :desc (text)
                  :type :date
-                 :import "Visszavonás idõpontja"))
+                 :import "Visszavonás idõpontja"
+                 :impersonal t
+                 ))
       :new-only nil)
 
      (:table t_tipusok
@@ -58,7 +60,9 @@
                  :desc (integer primary key))
                 (:column t_tipus
                  :desc (text not null unique)
-                 :import "Tanúsítvány típusa"))
+                 :import "Tanúsítvány típusa"
+                 :impersonal t
+                 ))
       :new-only t)
 
      (:table t_kapcs_eszkozok
@@ -66,7 +70,9 @@
                  :desc (integer primary key))
                 (:column t_kapcs_eszkoz
                  :desc (text not null unique)
-                 :import "Tanúsítványhoz kapcsolódó eszköz"))
+                 :import "Tanúsítványhoz kapcsolódó eszköz"
+                 :impersonal t
+                 ))
       :new-only t)
      
      (:table t_allapotok
@@ -74,7 +80,9 @@
                  :desc (integer primary key))
                 (:column t_allapot
                  :desc (text not null unique)
-                 :import "Tanúsítvány állapota"))
+                 :import "Tanúsítvány állapota"
+                 :impersonal t
+                 ))
       :new-only t)
      
      (:table szerv_egysegek
@@ -85,7 +93,9 @@
                  :desc (integer))
                 (:column szerv_egys
                  :desc (text not null unique)
-                 :import "Szervezeti egység"))
+                 :import "Szervezeti egység"
+                 :impersonal t
+                 ))
       :new-only t)
 
      (:table tank_kozpontok
@@ -93,7 +103,9 @@
                  :desc (integer primary key))
                 (:column tank_kozpont
                  :desc (text not null unique)
-                 :import "Tankerületi központ neve"))
+                 :import "Tankerületi központ neve"
+                 :impersonal t
+                 ))
       :new-only t)
      
      (:table beosztasok
@@ -151,7 +163,9 @@
                  :desc (integer))
                 (:column varos
                  :desc (text not null unique)
-                 :import "Születési hely"))
+                 :import "Születési hely"
+                 :impersonal t
+                 ))
       :new-only t)
 
      (:table orszagok
@@ -159,8 +173,37 @@
                  :desc (integer primary key))
                 (:column orszag
                  :desc (text not null unique)
-                 :import "Születési ország"))
-      :new-only t))
+                 :import "Születési ország"
+                 :impersonal t
+                 ))
+      :new-only t)
+
+     (:table users
+      :columns ((:column user_id
+                 :desc (integer primary key))
+                (:column username
+                 :desc (text not null))
+                (:column full_name
+                 :desc (text not null))
+                (:column password_mandatory_p
+                 :desc (integer))
+                (:column password
+                 :desc (text))
+                (:column active_p
+                 :desc (integer))
+                (:column admin_p
+                 :desc (integer))
+                (:column created_on
+                 :desc (text not null)))
+      :new-only t)
+
+     (:table user_filter
+      :columns ((:column user_id
+                 :desc (integer))
+                (:column tank_kozpont_id
+                 :desc (integer primary key)))
+      :new-only t)
+     )
 
 
     :connections

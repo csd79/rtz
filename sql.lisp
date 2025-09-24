@@ -214,9 +214,10 @@
 
 (defun db-info ()
   "Print the description of every table in DATABASE."
-  (dolist (table (existing-tables))
-    (format t "~%~%~a  -------------------------------------~%~{~a~%~}"
-            table (table-info table))))
+  (let ((*sqlfn* #'sql->list))
+    (dolist (table (existing-tables))
+      (format t "~%~%~a  -------------------------------------~%~{~a~%~}"
+              table (table-info table) 'list))))
 
 
 (defun dump-table (table)

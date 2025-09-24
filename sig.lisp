@@ -96,5 +96,17 @@
 
 
 (defun start ()
-  (let ((browser (make-browser :main)))
+  (let ((state   (make-instance 'wax-script))
+        (browser (make-browser :main)))
+    (init-state state :last-user-id nil :db-file "")
+    (load-state state :package-name "SIG")
     (capi:display browser)))
+
+
+
+
+
+
+
+
+
