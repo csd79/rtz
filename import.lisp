@@ -49,8 +49,7 @@
               values)))
     ;; Making a statement
     (apply #'insert-into name columns t values)
-    (first (first (select (list (primary-key name)) :from name :where (andeq columns values))))
-    ))
+    (first (first (select (list (primary-key name)) :from name :where (andeq columns values))))))
 
 
 (defparameter *b3* '((VISELT_CSALADNEV "Wayne")
@@ -187,6 +186,7 @@
     ))|#
 
 
+;; Rewrite this using the new RESOLVE-... functions!
 (defun temp->fix (temp obj step)
   "Move data from TEMP into fix tables."
   (let ((temp-header (table-columns temp))

@@ -4,6 +4,9 @@
 Ha importáláskor megszakítst nyomunk, a temp-ből fix-be történő átírás már nem áll le.
 
 
+SQL.LISP: TYPE-REWRITES kiváltható lenne XVLA->SQL-lel vagy fordítva???
+
+
 Átállni az új igénylő formátumra import / exportáláskor!
 
 
@@ -28,7 +31,7 @@ A séma import formátuma használható exportáláshoz?
 Exportáláskor csak a kijelölt rekordokat vigye ki. Ha nincs kijelölés, kérdezzen rá hogy biztosan az egész adatbázist exportálni akarjuk-e. Rengeteg rekord esetén az exportálást is x. soronként kellene csinálni.
 
 
-Temp táblák törlése (index lekérdezés változásakor) nem működik. Jelenleg IGNORE-ERRORS-szal biceg.
+Temp táblák törlése (index lekérdezés változásakor) nem működik. Jelenleg IGNORE-ERRORS-szal biceg (ld. DROP-TEMP-TABLE).
 
 
 Beállítások ablak:

@@ -1038,6 +1038,7 @@
     "Zsoldos"
     "Zsolt"))
 
+
 (defparameter *female-forenames*
   '("Abigél"
     "Adél"
@@ -1210,6 +1211,7 @@
     "Zsófia"
     "Zsuzsanna"))
 
+
 (defparameter *male-forenames*
   '("Ábel"
     "Ádám"
@@ -1343,6 +1345,7 @@
     "Zsigmond"
     "Zsolt"
     "Zsombor"))
+
 
 (defparameter *settlements*
   '(("Budapest"          0.297085770)
@@ -1488,6 +1491,7 @@
     ("Tököl"             0.998292067)
     ("Edelény"           1.000000000)))
 
+
 (defparameter *foreign-settlements*
   '(("Kolozsvár"        "Cluj-Napoca"       "Románia"                 0.124127733)
     ("Temesvár"         "Timisoara"         "Románia"                 0.210477460)
@@ -1568,6 +1572,7 @@
     ("Róma"             "Roma"              "Olaszország"             0.999951428)
     ("Madrid"           "Madrid"            "Spanyolország"           0.999978413)
     ("Tel-Aviv"         "Tel-Aviv"          "Izrael"                  1.000000000)))
+
 
 (defparameter *institutions*
   '(("Bácsalmási Hunyadi János Gimnázium" "Bajai TK")
@@ -4083,8 +4088,10 @@
     ("Zalaszentgróti Erkel Ferenc Alapfokú Mûvészeti Iskola Batthyány utcai Telephelye" "Zalaegerszegi TK")
     ("Zalaszentgróti Erkel Ferenc Alapfokú Mûvészeti Iskola Türjei Telephelye" "Zalaegerszegi TK")))
 
+
 (defun random-one (list)
   (nth (random (length list)) list))
+
 
 (defun male-name (&optional (double nil))
   (let ((result (append (list (random-one *raw-surnames*)
@@ -4097,10 +4104,12 @@
         (list result result)
         result))))
 
+
 (defun mrs (husband full)
   (if full
     (append (butlast husband) (list (concatenate 'string (first (last husband)) "né")))
     (list (concatenate 'string (first husband) "né"))))
+
 
 (defun female-name (&optional (strictly-maiden-p nil))
   (let* ((married (> (random 1.0) 0.4))
@@ -4130,6 +4139,7 @@
         maiden
         (list maiden (if married used maiden))))))
 
+
 (defun place ()
   (let* ((inland    (<= (random 1.0) 0.96))
          (random    (random 1.0))
@@ -4140,6 +4150,7 @@
     (if (= (length selection) 1)
       (list (first selection) (first selection) "Magyarország")
       selection)))
+
 
 (defun person ()
   (let* ((gender   (if (> (random 1.0) 0.55) 'male 'female))
@@ -4162,12 +4173,15 @@
      :birthdate  (format nil "~d-~2,'0d-~2,'0d" year month day)
      )))
 
+
 (defun institution ()
   (random-one *institutions*))
+
 
 (defun rank ()
   (random-one '("Igazgató" "Igazgató-helyettes" "Tanszakvezetõ"
                 "Tanszakvezetõ-helyettes" "Tanár" "Portás")))
+
 
 (defun id ()
   (concatenate 'string
@@ -4176,12 +4190,14 @@
                (loop for i from 0 below 2 collecting
                      (code-char (+ 65 (random 26))))))
 
+
 (defun phone ()
   (format nil "+36 (~a) ~3,'0d ~4,'0d"
           (if (> (random 1.0) 0.666)
             30 70)
           (random 1000)
           (random 10000)))
+
 
 (defun email (name)
   (let ((rewrites '(("á" "a") ("é" "e") ("í" "i") ("ó" "o") ("ö" "o")
@@ -4199,9 +4215,11 @@
                                name))
               (random-one hosts)))))
 
+
 (defun cert ()
   (string-upcase
    (wax::random-alphanumeric-string 16)))
+
 
 (defun random-date-between (year1 month1 day1 year2 month2 day2)
   (let* ((from   (encode-universal-time 0 0 0 day1 month1 year1))
@@ -4209,8 +4227,10 @@
          (random (+ from (random (- until from)))))
     (reverse (subseq (multiple-value-list (decode-universal-time random)) 3 6))))
 
+
 (defun datestring (date)
   (apply #'format nil "~a-~2,'0d-~2,'0d" date))
+
 
 (defun row (start-year)
   (let* ((institution (institution))
@@ -4236,10 +4256,12 @@
              :redacted-p (if (string= state "Visszavont") "Igen" "")
              :redact-date (if (string= state "Visszavont") (datestring til) "")))))
 
+
 (defun ensure3 (list)
   (if (= (length list) 2)
     (append list (list ""))
     list))
+
 
 (defun print-row (row)
   (let* ((values (loop for (k v) on row by #'cddr collecting v))

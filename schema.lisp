@@ -18,35 +18,23 @@
                 (:column szemely_id
                  :desc (integer not null))
                 (:column igazolvanyszam
-                 :desc (text not null)
-;                 :import "Igazolvány száma"
-                 )
+                 :desc (text not null))
                 (:column szerv_egys_id
                  :desc (integer not null))
                 (:column beosztas_id
                  :desc (integer not null))
                 (:column telefon
-                 :desc (text not null)
-;                 :import "Telefon"
-                 )
+                 :desc (text not null))
                 (:column email
-                 :desc (text not null)
-;                 :import "E-mail"
-                 )
+                 :desc (text not null))
                 (:column t_sorozatszam
-                 :desc (text unique)
-;                 :import "Tanúsítvány sorozatszáma"
-                 )
+                 :desc (text unique))
                 (:column t_ervenyesseg_kezdete
                  :desc (text)
-                 :type :date
-;                 :import "Tanúsítvány érvényességének kezdete"
-                 )
+                 :type :date)
                 (:column t_ervenyesseg_vege
                  :desc (text)
-                 :type :date
-;                 :import "Tanúsítvány érvényességének vége"
-                 )
+                 :type :date)
                 (:column t_tipus_id
                  :desc (integer))
                 (:column t_kapcs_eszkoz_id
@@ -56,9 +44,7 @@
                 (:column t_visszavonas_datuma
                  :desc (text)
                  :type :date
-;                 :import "Visszavonás idõpontja"
-                 :impersonal t
-                 ))
+                 :impersonal t))
       :new-only nil)
 
      (:table t_tipusok
@@ -66,9 +52,7 @@
                  :desc (integer primary key))
                 (:column t_tipus
                  :desc (text not null unique)
-;                 :import "Tanúsítvány típusa"
-                 :impersonal t
-                 ))
+                 :impersonal t))
       :new-only t)
 
      (:table t_kapcs_eszkozok
@@ -76,9 +60,7 @@
                  :desc (integer primary key))
                 (:column t_kapcs_eszkoz
                  :desc (text not null unique)
-;                 :import "Tanúsítványhoz kapcsolódó eszköz"
-                 :impersonal t
-                 ))
+                 :impersonal t))
       :new-only t)
      
      (:table t_allapotok
@@ -86,22 +68,18 @@
                  :desc (integer primary key))
                 (:column t_allapot
                  :desc (text not null unique)
-;                 :import "Tanúsítvány állapota"
-                 :impersonal t
-                 ))
+                 :impersonal t))
       :new-only t)
      
      (:table szerv_egysegek
       :columns ((:column szerv_egys_id
                  :desc (integer primary key))
                 (:column tank_kozpont_id
-;                     :desc (integer not null))
+;                 :desc (integer not null))
                  :desc (integer))
                 (:column szerv_egys
                  :desc (text not null unique)
-;                 :import "Szervezeti egység"
-                 :impersonal t
-                 ))
+                 :impersonal t))
       :new-only t)
 
      (:table tank_kozpontok
@@ -109,80 +87,54 @@
                  :desc (integer primary key))
                 (:column tank_kozpont
                  :desc (text not null unique)
-;                 :import "Tankerületi központ neve"
-                 :impersonal t
-                 ))
+                 :impersonal t))
       :new-only t)
      
      (:table beosztasok
       :columns ((:column beosztas_id
                  :desc (integer primary key))
                 (:column beosztas
-                 :desc (text not null unique)
-;                 :import "Beosztás"
-                 ))
+                 :desc (text not null unique)))
       :new-only t)
      
      (:table szemelyek
       :columns ((:column szemely_id
                  :desc (integer primary key))
                 (:column viselt_csaladnev
-                 :desc (text not null)
-;                 :import "Viselt családnév"
-                 )
+                 :desc (text not null))
                 (:column viselt_utonev_1
-                 :desc (text not null)
-;                 :import "Viselt utónév 1"
-                 )
+                 :desc (text not null))
                 (:column viselt_utonev_2
-                 :desc (text not null)
-;                 :import "Viselt utónév 2"
-                 )
+                 :desc (text not null))
                 (:column szul_csaladnev
-                 :desc (text not null)
-;                 :import "Születési családnév"
-                 )
+                 :desc (text not null))
                 (:column szul_utonev_1
-                 :desc (text not null)
-;                 :import "Születési utónév 1"
-                 )
+                 :desc (text not null))
                 (:column szul_utonev_2
-                 :desc (text not null)
-;                 :import "Születési utónév 2"
-                 )
+                 :desc (text not null))
                 (:column anya_csaladnev
-                 :desc (text not null)
-;                 :import "Anyja születési családneve"
-                 )
+                 :desc (text not null))
                 (:column anya_utonev_1
-                 :desc (text not null)
-;                 :import "Anyja születési utóneve 1"
-                 )
+                 :desc (text not null))
                 (:column anya_utonev_2
-                 :desc (text not null)
-;                 :import "Anyja születési utóneve 2"
-                 )
+                 :desc (text not null))
                 (:column varos_id
-;                     :desc (integer not null))
+;                 :desc (integer not null))
                  :desc (integer))
                 (:column szul_datuma
                  :desc (text not null)
-                 :type :date
-;                 :import "Születési dátum"
-                 ))
+                 :type :date))
       :new-only t)
 
      (:table varosok
       :columns ((:column varos_id
                  :desc (integer primary key))
                 (:column orszag_id
-;                     :desc (integer not null))
+;                 :desc (integer not null))
                  :desc (integer))
                 (:column varos
                  :desc (text not null unique)
-;                 :import "Születési hely"
-                 :impersonal t
-                 ))
+                 :impersonal t))
       :new-only t)
 
      (:table orszagok
@@ -190,9 +142,7 @@
                  :desc (integer primary key))
                 (:column orszag
                  :desc (text not null unique)
-;                 :import "Születési ország"
-                 :impersonal t
-                 ))
+                 :impersonal t))
       :new-only t)
 
      (:table users
@@ -241,7 +191,7 @@
     (:main
      (:id      igenyles_id
       :order   (igenyles_id asc)
-      :columns ((igenyles_id           "ID"                              60);;;;;;;;;;;;;;;;
+      :columns ((igenyles_id           "ID"                              60)
                 (tank_kozpont          "Tankerületi központ"             140)
                 (szerv_egys            "Intézmény"                       200)
                 (beosztas              "Beosztás"                        140)

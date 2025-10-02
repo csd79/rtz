@@ -101,12 +101,3 @@
     (init-state state :last-user-id nil :db-file "")
     (load-state state :package-name "SIG")
     (capi:display browser)))
-
-
-
-
-
-
-
-
-

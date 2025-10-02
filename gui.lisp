@@ -189,21 +189,19 @@
   (with-browser-locked (obj)
     (with-slots (id-temp-table) obj
       (unless (string= id-temp-table "")
-        (ignore-errors;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        (ignore-errors
           (drop-table id-temp-table))
         (setf id-temp-table "")))))
 
 
 (defmethod init-query-tempid ((obj browser))
   "Refresh ID temp table."
-;  (wg-msg "wazzzzzzz: ~a" (query obj))
   (with-db-context
     (with-slots (id-temp-table) obj
       ;; Delete any existing temporary id table.
       (drop-temp-table obj)
       ;; Create new temporary table.
       (setf id-temp-table (unique-table-name (user-token)))
-;      (wg-msg "ID-TEMP-TABLE inicialization!")
       (apply #'select-simple-id-into-temp
              (list (view-id (dbview obj)))
              (append (query obj)
@@ -214,11 +212,9 @@
   "Find the number of rows in query, set it to both slot and vscroll bar range.
    Also set relative pos to 0."
   (with-db-context
-    (let ((count (first
-                  (elt (funcall *sqlfn* (format nil "select count(~a) from ~a"
-                                                (view-id (dbview obj))
-                                                (id-temp-table obj)))
-                       0))))
+    (let* ((statement (format nil "select count(~a) from ~a"
+                              (view-id (dbview obj)) (id-temp-table obj)))
+           (count (first (elt (funcall *sqlfn* ) 0))))
       (setf (source-row-count obj) count))))
 
 
@@ -349,7 +345,7 @@
                      (when (numberp pos)
                        (when (set-exclusive-or (pages obj) (relevant-pages obj))
                          (refresh-pages obj))))
-                   (sleep 0.3)))))) ; -> globals!
+                   (sleep *vscroll-listener-sleep*))))))
 
 
 ;;; Browser lifecycle ---------------------
@@ -440,12 +436,13 @@
 ;;; Popup elements & items ----------------
 
 
-(defun hpi-label-value (element label)
+(defun hpi-label-value (element-n label)
   "Number of popup item LABEL in ELEMENT."
-  (if (eq label :default)
-    0
-    (or (position label (nth element *header-popup-items*) :key #'first :test #'string=)
-        0)))
+  (let* ((element  (nth element-n *header-popup-items*))
+         (position (position label element :key #'first :test #'string=)))
+    (cond ((eq label :default) 0)
+          (position            position)
+          (t                   0))))
 
 
 (defun hpi-value-label (element value)
@@ -476,12 +473,13 @@
 
 (defmethod init-popup ((obj browser))
   "Initialize POPUP-SELECTION and POPUP-VALUES."
-  (let ((column-count (length (view-columns (dbview obj)))))
-    (setf (popup-selection obj)
-          (loop for i from 0 below column-count collecting
-                (loop for j from 0 below (length *header-popup-items*) collecting 0)))
-    (setf (popup-values obj)
-          (loop for i from 0 below column-count collecting '()))))
+  (let* ((column-count    (length (view-columns (dbview obj))))
+         (length          (length *header-popup-items*))
+         (popup-selection (loop for i from 0 below column-count collecting
+                                (loop for j from 0 below length collecting 0)))
+         (popup-values    (loop for i from 0 below column-count collecting '())))
+    (setf (popup-selection obj) popup-selection
+          (popup-values obj) popup-values)))
 
 
 (defmethod get-popup-selection ((obj browser) column element)
@@ -592,14 +590,13 @@
   (destructuring-bind (labels keyword ops format types)
       subs
     (declare (ignore labels types))
-    (append (list keyword 
-                  (nth column (view-columns (dbview obj))))
+    (append (list keyword (nth column (view-columns (dbview obj))))
             ops
             (when (and format values)
               (list (apply #'format nil format values))))))
 
 
-(defun reduce-clauses (heap)
+#|(defun reduce-clauses (heap)
   "Construct sorting/filtering clause for the query."
   (let* ((keywords (remove-duplicates (mapcar #'first heap))))
     (mapcar #'(lambda (keyword)
@@ -611,6 +608,16 @@
                         (butlast (apply #'append (mapcar #'(lambda (subexpr)
                                                              (list (rest subexpr) 'and))
                                                          relevants))))))
+            keywords)))|#
+(defun reduce-clauses (heap)
+  "Construct sorting/filtering clause for the query."
+  (let* ((keywords (remove-duplicates (mapcar #'first heap))))
+    (mapcar #'(lambda (keyword)
+                (let* ((relevants (remove keyword heap :key #'first))
+                       (subexprs  (mapcan #'(lambda (sub)
+                                              (list (rest sub) 'and)))
+                                  relevants))
+                  (list keyword (butlast subexprs))))
             keywords)))
 
 
@@ -719,14 +726,10 @@
                   for r from 2 doing
                   (setf (xrange ws1 1 r width r)
                         (coerce row 'vector))
-                  (incf cnt)
-                  ))
+                  (incf cnt)))
           ;; Formatting
           (autofit-cols ws1)
-          (freeze-panes ws1 :after-column 1 :after-row 1)
-;          (wg-msg "~a" cnt)
-;          (wg-msg "~a" (selection obj))
-          )))))
+          (freeze-panes ws1 :after-column 1 :after-row 1))))))
 
 
 ;;; Settings ------------------------------
@@ -825,8 +828,20 @@
   |#
 
 
-
 ;;; BROWSER -------------------------------
+
+
+(defun header-callback (item interface)
+  (let ((column (position item (view-labels (dbview interface))
+                          :test #'string=)))
+    (multiple-value-bind (x y)
+        (capi:current-pointer-position
+         :relative-to (mclp interface))
+      (capi:display-popup-menu
+       (header-popup interface column)
+       :owner (mclp interface)
+       :button :button-1
+       :x x :y y))))
 
 
 (defun make-browser (view)
@@ -838,18 +853,7 @@
            (make-instance
             'browser
             :columns            (view-columns-desc view)
-            :header-args        `(:selection-callback
-                                  ,#'(lambda (item interface)
-                                       (let ((column (position item (view-labels (dbview interface))
-                                                               :test #'string=)))
-                                         (multiple-value-bind (x y)
-                                             (capi:current-pointer-position
-                                              :relative-to (mclp interface))
-                                           (capi:display-popup-menu
-                                            (header-popup interface column)
-                                            :owner (mclp interface)
-                                            :button :button-1
-                                            :x x :y y))))
+            :header-args        `(:selection-callback ,#'header-callback)
                                   :callback-type :item-interface)
             :dbview             view
             :row-height         row-height

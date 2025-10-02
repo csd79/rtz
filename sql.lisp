@@ -9,36 +9,33 @@
 
 
 ;;; :EXECUTE              : execute SQL statements
-;;; :EXECUTE-AND-VERIFY   : execute SQL statements, dump the statements and results
+;;; :EXECUTE-AND-VERIFY   : execute & dump SQL statements
 ;;; :VERIFYY              : dump statements without executing them
 (defparameter *exec/verify* :execute)
-
 (defparameter *statements-out* nil)
 
+
 (defun sql-execute-p () (member *exec/verify* '(:execute :execute-and-verify)))
+
 
 (defun sql-verify-p (&key (excl nil))
   (if excl
     (eq *exec/verify* :verify)
     (member *exec/verify* '(:execute-and-verify :verify))))
 
+
 (defmacro verify-statements ((&key (execute t)) &body body)
   "After BODY, return a dump string containting statements (& results) generated in BODY."
   `(let ((*statements-out* (make-string-output-stream))
          (*exec/verify*    (if ,execute :execute-and-verify :verify)))
-     (progn
-       ,@body
+     (progn ,@body
        (get-output-stream-string *statements-out*))))
-#|     (unwind-protect
-         (progn ,@body)
-       (get-output-stream-string *statements-out*))))|#
-#|       (let ((out (get-output-stream-string *statements-out*)))
-;         (print out)
-         out))))|#
+
 
 (defun statement (control-string &rest params)
   "Construct statement by interpolating PARAMS into CONTROL-STRING."
   (apply #'format nil control-string params))
+
 
 (defmacro def-sqlfn (fn-name (var-statement var-params) &body body)
   (let ((var-result (gensym)))
@@ -55,27 +52,13 @@
                          (format nil "=>  ~a" ,var-result))))
              ,var-result))))))
 
-#|(defun sql->list (statement &optional (params nil))
-  "Execute statement constructed from CONTROL-STRING and PARAMS,
-   return results as a list."
-  (let ((result (when (member *exec/verify* '(:execute :execute-and-verify))
-                  (apply #'execute-to-list *db* statement params))))
-    result))|#
+
 (def-sqlfn sql->list (statement params)
   "Execute statement constructed from CONTROL-STRING and PARAMS,
    return results as a list."
   (apply #'execute-to-list *db* statement params))
 
-#|(defun sql->sv (statement &optional (params nil))
-  "Execute statemtnt constructed from CONTROL-STRING and PARAMS,
-   return results as a vector of lists."
-  (let* ((tree   (sql->list statement params))
-         (length (length tree))
-         (result (make-array length)))
-    (loop for i from 0 below length
-          for e in tree doing
-          (setf (svref result i) e))
-    result))|#
+
 (def-sqlfn sql->sv (statement params)
   "Execute statemtnt constructed from CONTROL-STRING and PARAMS,
   return results as a vector of lists."
@@ -134,7 +117,7 @@
              (format nil "~a~a" table (sql-name column))))))
 
 
-(defun type-rewrites (list) ;;;;;;;;;;;;;;;;;;;;;;;;;   XVLA->SQL????????????????????
+(defun type-rewrites (list)
   "Transform elements of LIST as printed SQL values."
   (mapcar #'(lambda (element)
               (typecase element
@@ -426,7 +409,7 @@
   "Ensure qualified column names in a WHERE clause."
   ;;  (beosztas = 1 and orszagok.orszag < 2 or (szerv_egys > 6 and tank_kozpont = 5) and
   ;;      t_kapcs_eszkoz = 0)
-  ;;          ->
+  ;;          =>
   ;;  (BEOSZTASOK.BEOSZTAS = 1 AND ORSZAGOK.ORSZAG < 2 OR (SZERV_EGYSEGEK.SZERV_EGYS > 6 AND
   ;;      TANK_KOZPONTOK.TANK_KOZPONT = 5) AND T_KAPCS_ESZKOZOK.T_KAPCS_ESZKOZ = 0)
   (loop for index from 0 below (length tree)
@@ -451,17 +434,17 @@
 
 (defun join-keys (root column)
   "Return a list of key columns that lead from ROOT to COLUMN (if any)."
-  (labels ((f (root* column*)
+  (labels ((traverse (root* column*)
              (if (member column* (schema-columns root*))
                ;; If ROOT table contains COLUMN, the chain ends.
                (list t)
                ;; Otherwise, if ROOT has possible left joins, evaluate them.
                (first (remove nil (mapcar #'(lambda (record)
-                                              (let ((ret (f (second record) column*)))
+                                              (let ((ret (traverse (second record) column*)))
                                                 (when ret
                                                   (cons (third record) ret))))
                                           (many-joins root*)))))))
-    (let ((result (f root column)))
+    (let ((result (traverse root column)))
       (butlast result))))
 
 
@@ -486,14 +469,17 @@
     (sort-join-keys (delete-duplicates (apply #'nconc result)))))
 
 
-(defun find-join (key)
+#|(defun find-join (key)
   "Find the join that uses KEY."
   (find-if #'(lambda (record)
                (eq key (third record)))
-           (getf *schema* :connections)))
+           (getf *schema* :connections)))|#
+(defun find-join (key)
+  "Find the join that uses KEY."
+  (find key (getf *schema* :connections) :key #'third))
 
 
-(defun frills (columns where)
+#|(defun frills (columns where)
   "Calculate from tables, join clauses and the proper where clause."
   (let* ((where-columns  (where-columns where))
          (all-nq-columns (append columns where-columns))
@@ -506,8 +492,20 @@
          (join-keys      (all-join-keys from-tables all-nq-columns))
          (join-clauses   (mapcar #'find-join join-keys))
          (qwhere         (qualify-where where)))
+    (values from-tables join-clauses qwhere)))|#
+(defun frills (columns where)
+  "Calculate from tables, join clauses and the proper where clause."
+  (let* ((where-columns  (where-columns where))
+         (all-nq-columns (append columns where-columns))
+         (all-tableses   (mapcan #'(lambda (column)
+                                     (table column :primary-key-allowed t
+                                            :foreign-allowed t))
+                                 all-nq-columns))
+         (from-tables    (from-tables (delete-duplicates all-tableses)))
+         (join-keys      (all-join-keys from-tables all-nq-columns))
+         (join-clauses   (mapcar #'find-join join-keys))
+         (qwhere         (qualify-where where)))
     (values from-tables join-clauses qwhere)))
-  
 
 
 (defun select-simple (columns &key (where '()) (limit nil) (offset nil) (order-by '()))
@@ -516,12 +514,9 @@
       (frills columns where)
     (apply #'select
            (append (list columns :from from-tables :left-join join-clauses :where qwhere)
-                   (when order-by
-                     (list :order-by order-by))
-                   (when limit
-                     (list :limit limit))
-                   (when offset
-                     (list :offset offset))))))
+                   (when order-by (list :order-by order-by))
+                   (when limit    (list :limit limit))
+                   (when offset   (list :offset offset))))))
 
 
 (defun count-simple (columns &key (where '()))
@@ -537,9 +532,7 @@
     (let* ((select-substatement (verify-statements (:execute nil)
                                   (select-simple columns :where where :order-by order-by)))
            (full-statement      (format nil "create table ~a as ~a"
-                                        temp
-                                        select-substatement)))
-;      (wg-msg "select-simple-id-into-temp...")
+                                        temp select-substatement)))
       (funcall *sqlfn* full-statement))))
 
 
