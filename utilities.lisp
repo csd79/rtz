@@ -107,9 +107,25 @@
   (getf (select-column column table) :desc))
 
 
-(defun column-import (column table)
-  "Return temp table header to import value from."
-  (getf (select-column column table) :import))
+(defun find-import-if (predicate)
+  "Find import that satisfies PREDICATE."
+  (find-if predicate (getf *schema* :imports)))
+
+(defun default-import ()
+  "Name of the default import."
+  (getf (find-import-if #'(lambda (import) (getf import :default-p))) :name))
+
+(defun import-mapping (&optional (name nil))
+  "Return the mapping for IMPORT."
+  (getf (find-import-if #'(lambda (import)
+                            (eq (getf import :name)
+                                (or name (default-import)))))
+        :mapping))
+
+(defun column-import (column mapping)
+  "Spreadsheet column to import value for COLUMN. MAPPING must be the result of IMPORT-MAPPING."
+  (second (find column mapping :key #'first)))
+
 
 (defun column-impersonal (column table)
   "Tell whether column in mass-updateable."
@@ -138,11 +154,14 @@
   (all-connections #'first))
 
 
-(defun import-columns (table)
+(defun import-columns (table &optional (import nil))
   "List all columns in TABLE that has an :IMPORT value in SCHEMA."
-  (remove-if-not #'(lambda (column) (getf column :import))
-                 (getf (select-table table) :columns)))
-
+  (let ((mapping (mapcar #'first (import-mapping import)))
+        (columns (mapcar #'(lambda (column) (getf column :column))
+                         (getf (select-table table) :columns))))
+    (remove-if-not #'(lambda (column)
+                       (find column mapping))
+                   columns)))
 
 (defun foreign-columns (table)
   "List all columns in TABLE that doesn't have an :IMPORT value in SCHEMA."
@@ -159,7 +178,7 @@
   
 (defun immediate-p (column table)
   "Does COLUMN have an :IMPORT key?"
-  (immd-worker column (import-columns table)))
+  (member column (import-columns table)))
 
 (defun foreign-p (column table)
   "Is COLUMN without an :IMPORT key?"

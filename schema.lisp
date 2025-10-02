@@ -19,28 +19,34 @@
                  :desc (integer not null))
                 (:column igazolvanyszam
                  :desc (text not null)
-                 :import "Igazolvány száma")
+;                 :import "Igazolvány száma"
+                 )
                 (:column szerv_egys_id
                  :desc (integer not null))
                 (:column beosztas_id
                  :desc (integer not null))
                 (:column telefon
                  :desc (text not null)
-                 :import "Telefon")
+;                 :import "Telefon"
+                 )
                 (:column email
                  :desc (text not null)
-                 :import "E-mail")
+;                 :import "E-mail"
+                 )
                 (:column t_sorozatszam
                  :desc (text unique)
-                 :import "Tanúsítvány sorozatszáma")
+;                 :import "Tanúsítvány sorozatszáma"
+                 )
                 (:column t_ervenyesseg_kezdete
                  :desc (text)
                  :type :date
-                 :import "Tanúsítvány érvényességének kezdete")
+;                 :import "Tanúsítvány érvényességének kezdete"
+                 )
                 (:column t_ervenyesseg_vege
                  :desc (text)
                  :type :date
-                 :import "Tanúsítvány érvényességének vége")
+;                 :import "Tanúsítvány érvényességének vége"
+                 )
                 (:column t_tipus_id
                  :desc (integer))
                 (:column t_kapcs_eszkoz_id
@@ -50,7 +56,7 @@
                 (:column t_visszavonas_datuma
                  :desc (text)
                  :type :date
-                 :import "Visszavonás idõpontja"
+;                 :import "Visszavonás idõpontja"
                  :impersonal t
                  ))
       :new-only nil)
@@ -60,7 +66,7 @@
                  :desc (integer primary key))
                 (:column t_tipus
                  :desc (text not null unique)
-                 :import "Tanúsítvány típusa"
+;                 :import "Tanúsítvány típusa"
                  :impersonal t
                  ))
       :new-only t)
@@ -70,7 +76,7 @@
                  :desc (integer primary key))
                 (:column t_kapcs_eszkoz
                  :desc (text not null unique)
-                 :import "Tanúsítványhoz kapcsolódó eszköz"
+;                 :import "Tanúsítványhoz kapcsolódó eszköz"
                  :impersonal t
                  ))
       :new-only t)
@@ -80,7 +86,7 @@
                  :desc (integer primary key))
                 (:column t_allapot
                  :desc (text not null unique)
-                 :import "Tanúsítvány állapota"
+;                 :import "Tanúsítvány állapota"
                  :impersonal t
                  ))
       :new-only t)
@@ -93,7 +99,7 @@
                  :desc (integer))
                 (:column szerv_egys
                  :desc (text not null unique)
-                 :import "Szervezeti egység"
+;                 :import "Szervezeti egység"
                  :impersonal t
                  ))
       :new-only t)
@@ -103,7 +109,7 @@
                  :desc (integer primary key))
                 (:column tank_kozpont
                  :desc (text not null unique)
-                 :import "Tankerületi központ neve"
+;                 :import "Tankerületi központ neve"
                  :impersonal t
                  ))
       :new-only t)
@@ -113,7 +119,8 @@
                  :desc (integer primary key))
                 (:column beosztas
                  :desc (text not null unique)
-                 :import "Beosztás"))
+;                 :import "Beosztás"
+                 ))
       :new-only t)
      
      (:table szemelyek
@@ -121,38 +128,48 @@
                  :desc (integer primary key))
                 (:column viselt_csaladnev
                  :desc (text not null)
-                 :import "Viselt családnév")
+;                 :import "Viselt családnév"
+                 )
                 (:column viselt_utonev_1
                  :desc (text not null)
-                 :import "Viselt utónév 1")
+;                 :import "Viselt utónév 1"
+                 )
                 (:column viselt_utonev_2
                  :desc (text not null)
-                 :import "Viselt utónév 2")
+;                 :import "Viselt utónév 2"
+                 )
                 (:column szul_csaladnev
                  :desc (text not null)
-                 :import "Születési családnév")
+;                 :import "Születési családnév"
+                 )
                 (:column szul_utonev_1
                  :desc (text not null)
-                 :import "Születési utónév 1")
+;                 :import "Születési utónév 1"
+                 )
                 (:column szul_utonev_2
                  :desc (text not null)
-                 :import "Születési utónév 2")
+;                 :import "Születési utónév 2"
+                 )
                 (:column anya_csaladnev
                  :desc (text not null)
-                 :import "Anyja születési családneve")
+;                 :import "Anyja születési családneve"
+                 )
                 (:column anya_utonev_1
                  :desc (text not null)
-                 :import "Anyja születési utóneve 1")
+;                 :import "Anyja születési utóneve 1"
+                 )
                 (:column anya_utonev_2
                  :desc (text not null)
-                 :import "Anyja születési utóneve 2")
+;                 :import "Anyja születési utóneve 2"
+                 )
                 (:column varos_id
 ;                     :desc (integer not null))
                  :desc (integer))
                 (:column szul_datuma
                  :desc (text not null)
                  :type :date
-                 :import "Születési dátum"))
+;                 :import "Születési dátum"
+                 ))
       :new-only t)
 
      (:table varosok
@@ -163,7 +180,7 @@
                  :desc (integer))
                 (:column varos
                  :desc (text not null unique)
-                 :import "Születési hely"
+;                 :import "Születési hely"
                  :impersonal t
                  ))
       :new-only t)
@@ -173,7 +190,7 @@
                  :desc (integer primary key))
                 (:column orszag
                  :desc (text not null unique)
-                 :import "Születési ország"
+;                 :import "Születési ország"
                  :impersonal t
                  ))
       :new-only t)
@@ -250,6 +267,41 @@
                 (t_kapcs_eszkoz        "Kapcsolódó eszköz"               90)
                 (t_allapot             "Tanúsítvány státusza"            90)
                 (t_visszavonas_datuma  "Visszavonás dátuma"              80))))
+
+
+    :imports
+    ((:name      tk
+      :default-p t
+      :mapping   ((igazolvanyszam        "Igazolvány száma")
+                  (telefon               "Telefon")
+                  (email                 "E-mail")
+                  (t_sorozatszam         "Tanúsítvány sorozatszáma")
+                  (t_ervenyesseg_kezdete "Tanúsítvány érvényességének kezdete")
+                  (t_ervenyesseg_vege    "Tanúsítvány érvényességének vége")
+                  (t_visszavonas_datuma  "Visszavonás idõpontja")
+                  (t_tipus               "Tanúsítvány típusa")
+                  (t_kapcs_eszkoz        "Tanúsítványhoz kapcsolódó eszköz")
+                  (t_allapot             "Tanúsítvány állapota")
+                  (szerv_egys            "Szervezeti egység")
+                  (tank_kozpont          "Tankerületi központ neve")
+                  (beosztas              "Beosztás")
+                  (viselt_csaladnev      "Viselt családnév")
+                  (viselt_utonev_1       "Viselt utónév 1")
+                  (viselt_utonev_2       "Viselt utónév 2")
+                  (szul_csaladnev        "Születési családnév")
+                  (szul_utonev_1         "Születési utónév 1")
+                  (szul_utonev_2         "Születési utónév 2")
+                  (anya_csaladnev        "Anyja születési családneve")
+                  (anya_utonev_1         "Anyja születési utóneve 1")
+                  (anya_utonev_2         "Anyja születési utóneve 2")
+                  (szul_datuma           "Születési dátum")
+                  (varos                 "Születési hely")
+                  (orszag                "Születési ország")))
+
+     (:name      nisz
+      :default-p nil
+      :mapping   ())
+     )
 
 
     :filters

@@ -15,31 +15,58 @@
 
 (defparameter *statements-out* nil)
 
+(defun sql-execute-p () (member *exec/verify* '(:execute :execute-and-verify)))
+
+(defun sql-verify-p (&key (excl nil))
+  (if excl
+    (eq *exec/verify* :verify)
+    (member *exec/verify* '(:execute-and-verify :verify))))
+
 (defmacro verify-statements ((&key (execute t)) &body body)
   "After BODY, return a dump string containting statements (& results) generated in BODY."
   `(let ((*statements-out* (make-string-output-stream))
          (*exec/verify*    (if ,execute :execute-and-verify :verify)))
-     ,@body
-     (get-output-stream-string *statements-out*)))
-
+     (progn
+       ,@body
+       (get-output-stream-string *statements-out*))))
+#|     (unwind-protect
+         (progn ,@body)
+       (get-output-stream-string *statements-out*))))|#
+#|       (let ((out (get-output-stream-string *statements-out*)))
+;         (print out)
+         out))))|#
 
 (defun statement (control-string &rest params)
   "Construct statement by interpolating PARAMS into CONTROL-STRING."
   (apply #'format nil control-string params))
 
+(defmacro def-sqlfn (fn-name (var-statement var-params) &body body)
+  (let ((var-result (gensym)))
+    `(defun ,fn-name (,var-statement &optional (,var-params nil))
+       (let ((,var-result nil))
+         (unwind-protect 
+             (when (sql-execute-p)
+               (setf ,var-result (progn ,@body)))
+           (progn
+             (when (and *statements-out* (sql-verify-p))
+               (format *statements-out* "~a ~a  ~a          "
+                       ,var-statement (or ,var-params "")
+                       (if (sql-verify-p :excl t) ""
+                         (format nil "=>  ~a" ,var-result))))
+             ,var-result))))))
 
-(defun sql->list (statement &optional (params nil))
+#|(defun sql->list (statement &optional (params nil))
   "Execute statement constructed from CONTROL-STRING and PARAMS,
    return results as a list."
   (let ((result (when (member *exec/verify* '(:execute :execute-and-verify))
                   (apply #'execute-to-list *db* statement params))))
-    (when *statements-out*
-      (format *statements-out*
-              "~a" statement))
-    result))
+    result))|#
+(def-sqlfn sql->list (statement params)
+  "Execute statement constructed from CONTROL-STRING and PARAMS,
+   return results as a list."
+  (apply #'execute-to-list *db* statement params))
 
-
-(defun sql->sv (statement &optional (params nil))
+#|(defun sql->sv (statement &optional (params nil))
   "Execute statemtnt constructed from CONTROL-STRING and PARAMS,
    return results as a vector of lists."
   (let* ((tree   (sql->list statement params))
@@ -48,7 +75,18 @@
     (loop for i from 0 below length
           for e in tree doing
           (setf (svref result i) e))
+    result))|#
+(def-sqlfn sql->sv (statement params)
+  "Execute statemtnt constructed from CONTROL-STRING and PARAMS,
+  return results as a vector of lists."
+  (let* ((tree   (sql->list statement params))
+         (length (length tree))
+         (result (make-array length)))
+    (loop for i from 0 below length
+          for e in tree doing
+          (setf (svref result i) e))
     result))
+  
 
 (defparameter *sqlfn* #'sql->sv) ; #'sql->list
 
@@ -501,6 +539,7 @@
            (full-statement      (format nil "create table ~a as ~a"
                                         temp
                                         select-substatement)))
+;      (wg-msg "select-simple-id-into-temp...")
       (funcall *sqlfn* full-statement))))
 
 
