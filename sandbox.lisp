@@ -1,7 +1,7 @@
 ;;;; -*- Mode: Common-Lisp; Author: denes.cselovszky@gmail.com -*- 
                                                                               ;
 
-(in-package #:sig)
+(in-package #:rtz)
 
 
 ;;; ----------------------------------------------------------------------
@@ -106,3 +106,14 @@
                :where '(email like "%@isi%"))|#
 
       )))
+
+
+
+
+
+
+
+
+
+
+

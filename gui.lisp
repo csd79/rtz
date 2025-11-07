@@ -1,7 +1,7 @@
 ;;;; -*- Mode: Common-Lisp; Author: denes.cselovszky@gmail.com -*- 
                                                                               ;
 
-(in-package #:sig)
+(in-package #:rtz)
 
 
 
@@ -214,7 +214,7 @@
   (with-db-context
     (let* ((statement (format nil "select count(~a) from ~a"
                               (view-id (dbview obj)) (id-temp-table obj)))
-           (count (first (elt (funcall *sqlfn* ) 0))))
+           (count (first (elt (funcall *sqlfn* statement) 0))))
       (setf (source-row-count obj) count))))
 
 
@@ -615,8 +615,8 @@
     (mapcar #'(lambda (keyword)
                 (let* ((relevants (remove keyword heap :key #'first))
                        (subexprs  (mapcan #'(lambda (sub)
-                                              (list (rest sub) 'and)))
-                                  relevants))
+                                              (list (rest sub) 'and))
+                                          relevants)))
                   (list keyword (butlast subexprs))))
             keywords)))
 
@@ -684,7 +684,7 @@
 
 
 (defun import-from-xlsx (interface);;;;;;;;;;;;;;;;;; with-browser-locker ????
-  (declare (ignore interface))
+;  (declare (ignore interface))
   (let* ((raws  (capi:prompt-for-files "Üzenet" :filter "*.xlsx" ))
          (files (sort (mapcar #'namestring raws) #'string<=)))
     (when files
@@ -853,7 +853,7 @@
            (make-instance
             'browser
             :columns            (view-columns-desc view)
-            :header-args        `(:selection-callback ,#'header-callback)
+            :header-args        `(:selection-callback ,#'header-callback
                                   :callback-type :item-interface)
             :dbview             view
             :row-height         row-height
@@ -869,8 +869,7 @@
             :import-em  #'import-from-xlsx
             :bsettings  #'settings
             :new-record #'(lambda (interface) (input-window interface :new))
-            :update     #'(lambda (interface) (input-window interface :modify))
-            )))
+            :update     #'(lambda (interface) (input-window interface :modify)))))
       ;; STAGE 2
       (start-paging-listener interface)
       (reset-query interface)

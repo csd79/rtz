@@ -2,17 +2,17 @@
 
 (in-package "CL-USER")
 (load "c:\\Users\\cselovszkid\\.lispworks")
-(asdf:load-system "sig")
+(asdf:load-system "rtz")
 
-(in-package "SIG")
+(in-package "RTZ")
 (setf *independent-exe* t)
 (lw:deliver 'start
-    "c:\\Users\\cselovszkid\\common-lisp\\sig\\sig_v0.26.exe"
+    "c:\\Users\\cselovszkid\\common-lisp\\rtz\\rtz_v0.27.exe"
     5
     :interface :capi
     :console :io
     :multiprocessing t
-    :icon-file "c:\\Users\\cselovszkid\\common-lisp\\sig\\img\\sigorum.ico"
+    :icon-file "c:\\Users\\cselovszkid\\common-lisp\\rtz\\img\\ico.ico"
     :keep-symbols '(*appdir* *independent-exe*)
     :packages-to-keep-externals '(wax msoffice) ; fn-s called indirectly
     :keep-package-manipulation t

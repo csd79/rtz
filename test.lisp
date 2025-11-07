@@ -1,7 +1,7 @@
 ;;;; -*- Mode: Common-Lisp; Author: denes.cselovszky@gmail.com -*- 
                                                                               ;
 
-(in-package #:sig)
+(in-package #:rtz)
 
 
 
@@ -4264,10 +4264,10 @@
 
 
 (defun print-row (row)
-  (let* ((values (loop for (k v) on row by #'cddr collecting v))
+  (let* ((values (loop for (nil v) on row by #'cddr collecting v))
          (repaired (append (subseq values 0 2)
                            (ensure3 (nth 2 values))
                            (ensure3 (nth 3 values))
                            (ensure3 (nth 4 values))
                            (subseq values 5))))
-  (format t "~{~a~^|~}~%" repaired)))
+    (format t "~{~a~^|~}~%" repaired)))

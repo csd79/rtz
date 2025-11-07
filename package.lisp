@@ -4,7 +4,7 @@
 (in-package #:cl-user)
 
 
-(defpackage #:sig
+(defpackage #:rtz
   (:use #:cl #:ccom3 #:achar #:msoffice #:sqlite #:wax #:iterate)
   (:export
    ;; GLOBALS.LISP

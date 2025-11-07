@@ -1,7 +1,7 @@
 ;;;; -*- Mode: Common-Lisp; Author: denes.cselovszky@gmail.com -*- 
                                                                               ;
 
-(in-package #:sig)
+(in-package #:rtz)
 
 
 ;;; ----------------------------------------------------------------------
@@ -450,8 +450,8 @@
 
 (defun sort-join-keys (list)
   "Sort keys in hierarchical order."
-  (let ((all   (all-connections #'identity))
-        (manys (many-tables)))
+  (let ((all (all-connections #'identity)))
+;        (manys (many-tables)))
     (labels ((dig (key)
                (let ((many (first (find key all :key #'third))))
                  (if many

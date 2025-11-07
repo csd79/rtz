@@ -1,58 +1,59 @@
 ;;;; -*- Mode: Common-Lisp; Author: denes.cselovszky@gmail.com -*- 
                                                                               ;
 
-(in-package #:sig)
+(in-package #:rtz)
 
 
 ;;; ----------------------------------------------------------------------
 ;;; Basics
 
 
-(defun resolve-table (table columns values)
-  (let* ((tcols  (remove-if #'(lambda (column) (primary-key-p column table)) (schema-columns table)))
-         (colres (mapcar #'(lambda (tcol)
-                             (resolve-column tcol columns values))
-                         tcols))
-         (oks    (remove nil colres)))
-    (when oks
-      (append (list :table table) oks))))
-
-
 (defun resolve-column (column columns values)
-  (let* ((pos         (position column columns))
-         (table       (first (table column :foreign-allowed t)))
-         (immediate-p (immediate-p column table)))
-    (if immediate-p
-      (when pos
-        (list :column column (nth pos values)))
-      (let* ((foreign-table (second (find-if #'(lambda (row)
-                                                 (eq column (third row)))
-                                             (many-joins table))))
-             (tabresult     (resolve-table foreign-table columns values)))
-        (when tabresult
-          (list :column column tabresult))))))
+  "Helper for RESOLVE-TABLE, constructing subtree for COLUMN."
+  (let ((pos   (position column columns))                       ;   Did we provide a value for COLUMN?
+        (table (first (table column :foreign-allowed t))))      ;   The table that contains COLUMN as a foreign key.
+    (if (immediate-p column table)                              ; If COLUMN is an immediate value & not a key:
+      (when pos `(:column ,column ,(nth pos values)))           ;   => (:COLUMN <column> <val>) or NIL if value isn't provided
+      (let ((result (resolve-table (foreign-table table column) ; If COLUMN is not immediate:
+                                   columns values)))            ;   Subexpression for foreign table
+        (when result `(:column ,column ,result))))))            ; => (:COLUMN <column> (:TABLE ...)) or NIL if result is NIL
 
 
-(defun resolve-statement (list)
-  "Insert values into tables."
-  (let ((name    (second list))
-        (subs    (cddr list))
-        (columns '())
-        (values  '()))
-    ;; Collecting column names and values
-    (dolist (row subs)
-      (let ((col (second row))
-            (val (third row)))
-        (push col columns)
-        ;; If value is a sublist, resolve that first
-        (push (if (consp val) (resolve-statement val) val)
-              values)))
-    ;; Making a statement
-    (apply #'insert-into name columns t values)
-    (first (first (select (list (primary-key name)) :from name :where (andeq columns values))))))
+(defun resolve-table (table columns values)
+  "Construct a tree that describes columns and their values, plus their links across tables.
+   RESOLVE-STATEMENT will perform insert-calls guided by this tree. Example:
+     (:TABLE IGENYLESEK
+       (:COLUMN SZEMELY_ID     ; foreign key linking tables IGENYLESEK & SZEMELYEK
+         (:TABLE SZEMELYEK     ; inside SZEMELYEK, some immediate values:
+           (:COLUMN VISELT_CSALADNEV 'Wayne') (:COLUMN VISELT_UTONEV_1 'Bruce') ...)) ...)"
+  (let ((subexps
+    (loop for current in (schema-columns table)               ; Every column but the primary key in TABLE
+          unless (primary-key-p current table)
+          collect (resolve-column current columns values))))  ; List of column subexpressions
+    (when subexps `(:table ,table ,@subexps))))               ; If there were any, list them
 
 
-(defparameter *b3* '((VISELT_CSALADNEV "Wayne")
+(defun where= (columns values)
+  "WHERE clause where every COLUMNS equal VALUES one by one."
+  (let ((mains (mapcar #'(lambda (col val) (list col '= val 'and)) columns values)))
+    (butlast (apply #'nconc mains))))
+
+
+(defun resolve-statement (tree)
+  "Insert values into tables. The guiding TREE must be generated using RESOLVE-TABLE."
+  (let ((table (second tree)))
+    (loop for row in (cddr tree)                                      ; For each column:
+          for exp = (third row)
+          for val = (if (consp exp) (resolve-statement exp) exp)      ; If value is a subtree, resolve it first
+          collecting (second row) into columns                        ; Collect column names and values
+          collecting val into values
+          finally (progn (apply #'insert-into table columns t values) ; Insert row into TABLE
+                    (return (caar (select (list (primary-key table))  ; Return new row ID
+                                          :from table :where
+                                          (where= columns values))))))))
+
+
+(defparameter *b1* '((VISELT_CSALADNEV "Wayne")
                      (VISELT_UTONEV_1 "Bruce")
                      (VISELT_UTONEV_2 "Diló")
                      (SZUL_CSALADNEV "Wayne")
@@ -79,16 +80,55 @@
                      (T_VISSZAVONAS_DATUMA "9999-12-31")))
 
 
-(defun testi ()
+(defparameter *b2* '((VISELT_CSALADNEV "Kent")
+                     (VISELT_UTONEV_1 "Clark")
+                     (VISELT_UTONEV_2 "W")
+                     (SZUL_CSALADNEV "El")
+                     (SZUL_UTONEV_1 "Kal")
+                     (SZUL_UTONEV_2 "Dee")
+                     (ANYA_CSALADNEV "Lor-Van")
+                     (ANYA_UTONEV_1 "Lara")
+                     (ANYA_UTONEV_2 "Nartha")
+                     (ORSZAG "USK")
+                     (VAROS "Kriptoville")
+                     (SZUL_DATUMA "4939.04.01")
+                     (IGAZOLVANYSZAM "XXYYXXYY21")
+                     (TANK_KOZPONT "Kansas Southern Dustbowl")
+                     (SZERV_EGYS "Smallville High")
+                     (BEOSZTAS "Iskolaújság szerkesztõ")
+                     (TELEFON "888-naci")
+                     (EMAIL "sup@fort.soli")
+                     (T_SOROZATSZAM "9876543210")
+                     (T_ERVENYESSEG_KEZDETE "2025-07-29")
+                     (T_ERVENYESSEG_VEGE "2025-12-31")
+                     (T_TIPUS "GHVC")
+                     (T_KAPCS_ESZKOZ "Kristály")
+                     (T_ALLAPOT "Megújuló")
+                     (T_VISSZAVONAS_DATUMA "9999-12-31")))
+
+
+(defun insert-new-test (list)
   (with-db-context
-    (verify-statements (:execute nil)
-      (let ((*sqlfn* #'sql->list))
+    (verify-statements (:execute t)
+      (let ((*sqlfn* #'sql->list)
+            (labels  (mapcar #'first list))
+            (values  (mapcar #'second list)))
         (resolve-statement
-         (resolve-table 'igenylesek (mapcar #'first *b3*) (mapcar #'second *b3*)))))))
+         (resolve-table 'igenylesek labels values))))))
+
+(defun resolve-table-test (list)
+  (with-db-context
+    (let ((*sqlfn* #'sql->list)
+          (labels  (mapcar #'first list))
+          (values  (mapcar #'second list)))
+      (resolve-table 'igenylesek labels values))))
 
 
 #|
  A legtöbb mezõt kötelezõ megadni, ezért pár mezõs hívásokkal esélytelen ezt tesztelni.
+
+
+ Az a sok izé amit az INSERT-NEW-TEST kiír, a verify-statements eredménye. Minden táblába való beszúrás után lekérdez hogy megkapja a háttértábla id-jét, ami megy a fõtáblába.
  
  |#
     
@@ -157,33 +197,6 @@
                     columns))))|#
 
 
-(defun andeq (columns values)
-  "WHERE clause where every column equals a given value."
-  (let ((mains (mapcar #'(lambda (col val)
-                           (list col '= val 'and))
-                       columns values)))
-    (butlast (apply #'nconc mains))))
-
-
-#|(defun resolve-statement (list)
-  "Insert values into tables."
-  (let ((name    (second list))
-        (subs    (cddr list))
-        (columns '())
-        (values  '()))
-    ;; Collecting column names and values
-    (dolist (row subs)
-      (let ((col (second row))
-            (val (third row)))
-        (push col columns)
-        ;; If value is a sublist, resolve that first
-        (push (if (consp val) (resolve-statement val) val)
-              values)))
-    ;; Making a statement
-;    (list :name name :subs subs :columns columns :values values)
-    (apply #'insert-into name columns t values)
-    (first (first (select (list (primary-key name)) :from name :where (andeq columns values))))
-    ))|#
 
 
 ;; Rewrite this using the new RESOLVE-... functions!
@@ -193,7 +206,7 @@
         (temp-rows   (dump-table temp))
         (root-table  (root-table)))
     (dolist (row temp-rows)
-      (resolve-table
+      (resolve-table                 ; WRONG NUMBER OF ARGUMENTS!
        (resolve-values root-table temp-header row))
       (dump obj "~a~%~%" row)
       (pstep obj :step step)

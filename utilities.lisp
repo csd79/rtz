@@ -1,7 +1,7 @@
 ;;; -*- Msode: Common-Lisp; Author: denes.cselovszky@gmail.com -*-
 
 
-(in-package #:sig)
+(in-package #:rtz)
 
 
 ;;; ----------------------------------------------------------------------
@@ -259,6 +259,13 @@
                  (let ((first (first column)))
                    (not (column-impersonal first (first (table first :foreign-allowed t))))))
              (getf (view view) :columns)))
+
+
+(defun foreign-table (table column)
+  "Foreign table linked to TABLE by key COLUMN."
+  (second (find-if #'(lambda (row)
+                       (eq column (third row)))
+                   (many-joins table))))
 
 
 ;;; ----------------------------------------------------------------------

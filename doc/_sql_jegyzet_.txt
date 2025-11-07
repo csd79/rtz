@@ -21,15 +21,17 @@ Módosítás
     UDPATE table SET col1=val1 WHERE col2=?
 
 
-WHERE
-    WHERE col1 = 100              ; operátorok: =, <> v. !=, <, >, <=, >=
-    WHERE col2 IN (1,2,3)
-    WHERE col3 LIKE 'An%'
-    WHERE col4 BETWEEN 10 AND 20
-    WHERE (col5 = 'A' AND NOT col6 = 'b') OR col7 = 'c'
+WHERE; operátorok: =, <> v. !=, <, >, <=, >=
+    WHERE col1 = 100                                    ; '(col = 100)
+    WHERE col2 IN (1,2,3)                               ; `(col2 in (:vals 1 2 3))
+    WHERE col3 LIKE 'An%'                               ; '(col3 like "An%")
+    WHERE col4 BETWEEN 10 AND 20                        ; '(col4 between 10 and 20)
+    WHERE (col5 = 'A' AND NOT col6 = 'b') OR col7 = 'c' ; '((col5 = "A" and not col6 = "b")
+                                                        ;   or col7="C")
     WHERE EXISTS (SELECT 1 FROM invoices WHERE customer_id = c.customer_id)
-        ; Azokat a rekordokat adja vissza, akiknek
-        ; a customer_id-ja szerepel az invoices táblában
+        ; Azokat a rekordokat adja vissza, akiknek      ; `(exists (select 1 from invoices
+        ; a customer_id-ja szerepel az invoices-ban     ;    ,(col 'cu-id) = ,(col 'cu-id 'c)))
+    ; Joker karakterek:   '%': 0 vagy több karakter;   '_': 1 karakter
 
 
 Lekérdezés
@@ -59,7 +61,7 @@ Lekérdezés
         ; Futtatott csoportosítás: (1,1), (1,2), (1,3), ..., (2,1), (2,2), ...
 
     SELECT col1, col2 FROM table
-        ORDER BY col1 ASC, col2 DESC
+        ORDER BY col1 ASC, col2 DESC                    ; '((:@vals (col1 asc) (col2 desc))
 
 
 Nézet: mentett lekérdezés
