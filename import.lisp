@@ -9,49 +9,67 @@
 
 
 (defun resolve-column (column columns values)
-  "Helper for RESOLVE-TABLE, constructing subtree for COLUMN."
-  (let ((pos   (position column columns))                       ;   Did we provide a value for COLUMN?
-        (table (first (table column :foreign-allowed t))))      ;   The table that contains COLUMN as a foreign key.
-    (if (immediate-p column table)                              ; If COLUMN is an immediate value & not a key:
-      (when pos `(:column ,column ,(nth pos values)))           ;   => (:COLUMN <column> <val>) or NIL if value isn't provided
-      (let ((result (resolve-table (foreign-table table column) ; If COLUMN is not immediate:
-                                   columns values)))            ;   Subexpression for foreign table
-        (when result `(:column ,column ,result))))))            ; => (:COLUMN <column> (:TABLE ...)) or NIL if result is NIL
+  "Helper for RESOLVE-TABLE, constructs subtree for COLUMN."
+  ;; POS: is there a value for COLUMN provided in VALUES?
+  ;; TABLE: the one that has COLUMN as a foreign key
+  (let ((pos   (position column columns))
+        (table (first (table column :foreign-allowed t))))
+    ;; If COLUMN is an immediate value & not a key:
+    ;; => (:COLUMN <collumn> <val>) when value is provided
+    (if (immediate-p column table)
+      (when pos `(:column ,column ,(nth pos values)))
+      ;; If COLUMN isn't immediate:
+      ;; => (:COLUMN <column> (:TABLE <subtree...>)) when subtree
+      (let ((result (resolve-table (foreign-table table column)
+                                   columns values)))
+        (when result `(:column ,column ,result))))))
 
 
 (defun resolve-table (table columns values)
-  "Construct a tree that describes columns and their values, plus their links across tables.
-   RESOLVE-STATEMENT will perform insert-calls guided by this tree. Example:
+  "Construct a tree that describes columns and their values, plus
+   their links across tables. RESOLVE-INSERT-NEW will perform
+   insert-calls guided by this tree. Example:
      (:TABLE IGENYLESEK
-       (:COLUMN SZEMELY_ID     ; foreign key linking tables IGENYLESEK & SZEMELYEK
+       (:COLUMN SZEMELY_ID     ; foreign key linking IGENYLESEK & SZEMELYEK
          (:TABLE SZEMELYEK     ; inside SZEMELYEK, some immediate values:
-           (:COLUMN VISELT_CSALADNEV 'Wayne') (:COLUMN VISELT_UTONEV_1 'Bruce') ...)) ...)"
-  (let ((subexps
-    (loop for current in (schema-columns table)               ; Every column but the primary key in TABLE
-          unless (primary-key-p current table)
-          collect (resolve-column current columns values))))  ; List of column subexpressions
-    (when subexps `(:table ,table ,@subexps))))               ; If there were any, list them
+           (:COLUMN VISELT_CSALADNEV 'Wayne')
+           (:COLUMN VISELT_UTONEV_1 'Bruce') ...)) ...)"
+  ;; For every column in TABLE except the primary key:
+  ;; make a list of column subtrees.
+  (let ((subtrees (loop for current in (schema-columns table)
+                        for subtree = (unless (primary-key-p current table)
+                                        (resolve-column current columns values))
+                        when subtree collect subtree)))
+    ;; => (:TABLE <table> <subtrees...>)  or  NIL if there were no subtrees.
+    (when subtrees `(:table ,table ,@subtrees))))
 
 
 (defun where= (columns values)
   "WHERE clause where every COLUMNS equal VALUES one by one."
-  (let ((mains (mapcar #'(lambda (col val) (list col '= val 'and)) columns values)))
+  (let ((mains (mapcar #'(lambda (col val) (list col '= val 'and))
+                       columns values)))
     (butlast (apply #'nconc mains))))
 
 
-(defun resolve-statement (tree)
-  "Insert values into tables. The guiding TREE must be generated using RESOLVE-TABLE."
-  (let ((table (second tree)))
-    (loop for row in (cddr tree)                                      ; For each column:
-          for exp = (third row)
-          for val = (if (consp exp) (resolve-statement exp) exp)      ; If value is a subtree, resolve it first
-          collecting (second row) into columns                        ; Collect column names and values
-          collecting val into values
-          finally (progn (apply #'insert-into table columns t values) ; Insert row into TABLE
-                    (return (caar (select (list (primary-key table))  ; Return new row ID
-                                          :from table :where
-                                          (where= columns values))))))))
-
+(defun resolve-op (tree op &optional (test nil))
+  "Insert values into tables. The guiding TREE must be generated
+   using RESOLVE-TABLE."
+  (flet ((body ()
+           (let ((table (second tree)))
+             ;; For each column:
+             ;; - If value is a subtree, resolve it first
+             ;; - Then collect names and values
+             ;; - Finally, insert row into TABLE & return the new row ID
+             (loop for row in (cddr tree)
+                   for exp = (third row)
+                   for val = (if (consp exp) (resolve-op exp op test) exp)
+                   collecting (second row) into columns
+                   collecting val into values
+                   finally (return (funcall op table columns values))))))
+    (if test
+      (when (funcall test tree) (body))
+      (body))))
+    
 
 (defparameter *b1* '((VISELT_CSALADNEV "Wayne")
                      (VISELT_UTONEV_1 "Bruce")
@@ -66,12 +84,13 @@
                      (VAROS "Gotham")
                      (SZUL_DATUMA "1939.04.01")
                      (IGAZOLVANYSZAM "AH128144")
-                     (TANK_KOZPONT "Kelet-Gothami TK")
+                     (TANK_KOZPONT "Kelet-Gothami  TK")
                      (SZERV_EGYS "Bûn sikátora Általános Iskola")
                      (BEOSZTAS "Tanársegéd")
                      (TELEFON "555-cipõ")
                      (EMAIL "bats@bat.cave")
                      (T_SOROZATSZAM "12345679")
+;                     (T_SOROZATSZAM "11223344")
                      (T_ERVENYESSEG_KEZDETE "2025-09-29")
                      (T_ERVENYESSEG_VEGE "2025-12-31")
                      (T_TIPUS "American Express")
@@ -93,12 +112,13 @@
                      (VAROS "Kriptoville")
                      (SZUL_DATUMA "4939.04.01")
                      (IGAZOLVANYSZAM "XXYYXXYY21")
-                     (TANK_KOZPONT "Kansas Southern Dustbowl")
+                     (TANK_KOZPONT "Kansas  Southern Dustbowl")
                      (SZERV_EGYS "Smallville High")
                      (BEOSZTAS "Iskolaújság szerkesztõ")
                      (TELEFON "888-naci")
                      (EMAIL "sup@fort.soli")
                      (T_SOROZATSZAM "9876543210")
+;                     (T_SOROZATSZAM "99887766")
                      (T_ERVENYESSEG_KEZDETE "2025-07-29")
                      (T_ERVENYESSEG_VEGE "2025-12-31")
                      (T_TIPUS "GHVC")
@@ -107,14 +127,75 @@
                      (T_VISSZAVONAS_DATUMA "9999-12-31")))
 
 
-(defun insert-new-test (list)
+(defparameter *b3* '((VISELT_CSALADNEV "Allen")
+                     (VISELT_UTONEV_1 "Barry")
+                     (VISELT_UTONEV_2 "X.")))
+
+
+(defun gui-op-context (list op-fn &optional (test-fn nil))
+  "Mid layer between the RESOLVE-fns and OP-FN."
   (with-db-context
+    (let ((*sqlfn* #'sql->list)
+          (cols    (mapcar #'first list))
+          (vals    (mapcar #'second list)))
+      (resolve-op
+       (resolve-table (root-table) cols vals)
+       op-fn test-fn))))
+
+
+(defun select-same (table cols vals)
+  (select (list (primary-key table))
+          :from table :where (where= cols vals)))
+
+
+(defun gui-insert-new (list)
+  (gui-op-context list
+   ;; Op function
+   #'(lambda (table columns values)
+       (apply #'insert-into table columns t values)
+#|       (caar (select (list (primary-key table))
+                     :from table :where
+                     (where= columns values))))|#
+       (caar (select-same table columns values)))
+   ;; Test function
+   #'(lambda (tree)
+       (destructuring-bind (key table &rest rest) tree
+         (declare (ignore rest))
+         (if (and (eq key :table) (eq table (root-table)))
+           ;; If current table is the root, further examination is needed
+           (loop for e in (cddr tree)
+                 for third = (third e)
+                 when (atom third)
+                 collect (second e) into cols and
+                 collect third into vals
+                 ;; If provided values exist in root table, cancel
+#|                 finally (return (null (select (list (primary-key table))
+                                               :from table :where
+                                               (where= cols vals)))))|#
+                 finally (return (null (select-same table cols vals))))
+           ;; Otherwise, carry on with the resolve
+           t)))))
+
+
+(defun gui-update (ids list)
+  (gui-op-context list
+   #'(lambda (table columns values)
+       ;; Op fn will be called on parent tables without updateable
+       ;; columns, hence we have to check if VALUES are not NILs.
+       (let ((values* (remove nil values))
+             (ids*    (remove nil ids)))
+         (when (and values* ids*)
+           (apply #'update-rows table (primary-key table) ids*
+                  columns values*))))))
+
+
+(defun insert-update-test ()
+  (with-transl (*rtz-translators*)
     (verify-statements (:execute t)
-      (let ((*sqlfn* #'sql->list)
-            (labels  (mapcar #'first list))
-            (values  (mapcar #'second list)))
-        (resolve-statement
-         (resolve-table 'igenylesek labels values))))))
+      (let ((ids (mapcar #'gui-insert-new (list *b1* *b2*))))
+;        (gui-update (mapcar #'first ids) *b3*))))
+        (gui-update ids *b3*)
+      ))))
 
 (defun resolve-table-test (list)
   (with-db-context
@@ -122,16 +203,6 @@
           (labels  (mapcar #'first list))
           (values  (mapcar #'second list)))
       (resolve-table 'igenylesek labels values))))
-
-
-#|
- A legtöbb mezõt kötelezõ megadni, ezért pár mezõs hívásokkal esélytelen ezt tesztelni.
-
-
- Az a sok izé amit az INSERT-NEW-TEST kiír, a verify-statements eredménye. Minden táblába való beszúrás után lekérdez hogy megkapja a háttértábla id-jét, ami megy a fõtáblába.
- 
- |#
-    
 
 
 ;;; ----------------------------------------------------------------------
@@ -143,7 +214,9 @@
   (let ((accum '())
         (width (xarray-width rows)))
     (do-xarows (row r rows)
-      (push (loop for c from 0 below width collecting (xlval->sql (xcref row c)))
+      (push (loop for c from 0 below width collecting
+;                  (xlval->sql (xcref row c)))
+                  (transl (xcref row c) "xl>sql"))
             accum))
     (apply #'nconc (nreverse accum))))
 
@@ -166,37 +239,11 @@
           doing (apply #'insert-into table (column-names xarray) nil vals)
                 (dump obj "Sorok: ~a - ~a~%" start (+ start height2 -1))
                 (pstep obj :step (* step *rows-per-statement*))
-                (pabort obj)
-                )))
+                (pabort obj))))
 
 
 ;;; ----------------------------------------------------------------------
 ;;; temp -> fix (auto-resolve insertion)
-
-
-#|(defun resolve-values (table temp-columns temp-values)
-  "Create hierarchical list of values to insert."
-  (let ((columns (remove-if #'(lambda (column) (primary-key-p column table)) (schema-columns table))))
-    (append (list :table table)
-            (mapcar #'(lambda (column)
-                        (if (immediate-p column table)
-                          ;; COLUMN contains an immediate value
-                          (let* ((from (sql-name (column-import column table)))
-                                 ;; Find value by it's import header's position in TEMP-COLUMNS
-                                 (pos  (position from temp-columns :test #'string=)))
-                            (list :column column (nth pos temp-values)))
-                          ;; COLUMN contains a foreign value
-                          (let* ((many-joins (many-joins table))
-                                 ;; Find table for foreign index
-                                 (foreign-table (second (find-if #'(lambda (row)
-                                                                     (eq column (third row)))
-                                                                 many-joins))))
-                            ;; Create sublist for FOREIGN-TABLE
-                            (list :column column
-                                  (resolve-values foreign-table temp-columns temp-values)))))
-                    columns))))|#
-
-
 
 
 ;; Rewrite this using the new RESOLVE-... functions!
@@ -206,8 +253,12 @@
         (temp-rows   (dump-table temp))
         (root-table  (root-table)))
     (dolist (row temp-rows)
-      (resolve-table                 ; WRONG NUMBER OF ARGUMENTS!
-       (resolve-values root-table temp-header row))
+
+      ;; RESOLVE-TABLE/VALUES don't exist anymore!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      (resolve-table
+;       (resolve-values root-table temp-header row)
+       temp-header root-table nil) ; fake arguments!
+
       (dump obj "~a~%~%" row)
       (pstep obj :step step)
       (pabort obj))))
@@ -217,24 +268,15 @@
 ;;; Single row insert / update
 
 
-#|
-
-  (let ((mapping (import-mapping 'tk)))
+#|  (let ((mapping (import-mapping 'tk)))
     (column-import 'anya_utonev_2 mapping)
     ...)
 
-  |#
-
-
-
 (defun insertdb (columns values)
-  
-  )
-
+  ...)
 
 (defun updatedb (id columns values)
-  
-  )
+  ...)|#
 
 
 ;;; ----------------------------------------------------------------------

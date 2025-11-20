@@ -46,7 +46,7 @@
                (setf ,var-result (progn ,@body)))
            (progn
              (when (and *statements-out* (sql-verify-p))
-               (format *statements-out* "~a ~a  ~a          "
+               (format *statements-out* "~a ~a  ~a~2%"
                        ,var-statement (or ,var-params "")
                        (if (sql-verify-p :excl t) ""
                          (format nil "=>  ~a" ,var-result))))
@@ -117,7 +117,7 @@
              (format nil "~a~a" table (sql-name column))))))
 
 
-(defun type-rewrites (list)
+#|(defun type-rewrites (list) ;;;;; SWAP THIS TO REWRITE!!!
   "Transform elements of LIST as printed SQL values."
   (mapcar #'(lambda (element)
               (typecase element
@@ -129,7 +129,7 @@
                 (symbol (symbol-name element))
                 (string (format nil "'~a'" element))
                 (t element)))
-          list))
+          list))|#
 
 
 (defun clause (name arg)
@@ -141,7 +141,8 @@
                        (t (error "'~a' is not a usable clause name." name)))))
     (septd (nconc (list (str:replace-all "-" " " name-string))
                   (if (listp arg)
-                    (type-rewrites arg)
+;                    (type-rewrites arg)
+                    (transl arg "lisp>sql")
                     (list arg)))
            :in-parens nil)))
 
@@ -274,10 +275,11 @@
   (let* ((width  (if (sequencep dest) (length dest) 1))
          (length (length values))
          (height (round (/ length width)))
-         (ignore (if new-only "OR IGNORE " "")))
+         (ignore (if new-only "OR IGNORE " ""))
+         (transl (mapcar #'(lambda (value) (transl value "str>sql")) values)))
     ;; If number of values doesn't correspond with number of columns => error.
     (unless (= length (* width height))
-      (error "Numberof columns (~a) is in conflict with number of values (~a)." width length))
+      (error "Number of columns (~a) <> number of values (~a)." width length))
     ;; Operation.
     (funcall *sqlfn* (statement "insert ~ainto ~a ~a values ~a" ignore table
                                 ;; List of destination columns.
@@ -287,7 +289,8 @@
                                           :parens t)
                                 ;; Patern of ?s.
                                 (param-pattern width height))
-             values)))
+;             values)))
+             transl)))
 
 
 (defun select (columns &key (distinct nil) (from nil)     (left-join nil) (where nil)
@@ -310,6 +313,36 @@
                                   where* group-by* having*
                                   order-by* limit* offset*)))))
     (funcall *sqlfn* statement inserts)))
+
+
+(defun cv-pairs (columns values)
+  "Generate subexpression COL1=VAL1, COL2=VAL2..."
+  (format nil "~{~a~^, ~}"
+          (mapcar #'(lambda (col val)
+                      (format nil "~a=~a" col
+                              (if (stringp val)
+                                (format nil "~C~a~C" #\" val #\")
+                                val)))
+                  columns values)))
+
+
+(defun update-rows (table idcol ids destination &rest values)
+  "Replace values in COLUMNS with VALUES in rows identified by IDS."
+  (let* ((destlist (if (sequencep destination) destination (list destination)))
+         (collen   (length destlist))
+         (vallen   (length values))
+         (filter   (if (sequencep ids)
+                   `(,idcol in (:vals ,@ids))
+                   `(,idcol = ,ids))))
+    ;; If number of values doesn't correspond with number of columns => error.
+    (unless (= collen vallen)
+      (error "Numberof columns (~a) does not equal number of values (~a)." collen vallen))
+    ;; Operation
+    (funcall *sqlfn* (statement "update ~a set ~a ~a"
+                                table
+                                (cv-pairs destlist values)
+                                (clause-where filter)))))
+;    (clause-where filter)))
 
 
 ;;; ----------------------------------------------------------------------
@@ -526,11 +559,11 @@
       (first (elt result 0)))))
 
 
-(defun select-simple-id-into-temp (columns &key (where '()) (order-by '()) (temp ""))
-  "Create table TEMP and select COLUMN (presumably and id) into it."
+(defun select-simple-id-into-temp (column &key (where '()) (order-by '()) (temp ""))
+  "Create table TEMP and select COLUMN (presumably an id) into it."
   (unless (string= temp "")
     (let* ((select-substatement (verify-statements (:execute nil)
-                                  (select-simple columns :where where :order-by order-by)))
+                                  (select-simple column :where where :order-by order-by)))
            (full-statement      (format nil "create table ~a as ~a"
                                         temp select-substatement)))
       (funcall *sqlfn* full-statement))))

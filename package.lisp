@@ -5,7 +5,7 @@
 
 
 (defpackage #:rtz
-  (:use #:cl #:ccom3 #:achar #:msoffice #:sqlite #:wax #:iterate)
+  (:use #:cl #:ccom3 #:achar #:transl #:msoffice #:sqlite #:wax #:iterate)
   (:export
    ;; GLOBALS.LISP
    #:%dbfile%                             ; DB file pathname, based on *DB-LOCATION* and *DB-NAME*

@@ -4212,7 +4212,7 @@
       (format nil "~{~a~^.~}@~a.hu"
               (reverse (mapcar #'(lambda (string)
                                    (repl (astring-downcase string) rewrites))
-                               name))
+                               (apply #'nconc (mapcar #'str:words name))))
               (random-one hosts)))))
 
 

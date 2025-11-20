@@ -331,6 +331,75 @@
   '(satisfies seq-of-seqs-of-strings-or-symbols-p))
 
 
+(deftype value-list ()
+  "A string of elements separated by commas, enclosed in parenthesis."
+  `(and list (not null) (satisfies ,#'(lambda (list) (eq (first list) :vals)))))
+
+(deftype enclosed-value-list ()
+  "A string of elements separated by commas."
+  `(and list (not null) (satisfies ,#'(lambda (list) (eq (first list) :@vals)))))
+
+
+
+;;; ----------------------------------------------------------------------
+;;; Translators
+
+
+(deftranslators *rtz-translators*
+  ;; string -> SQL
+  (:src  "str"
+   :dst  "sql"
+   :type string
+   :fn   (str (format nil "~a" (clean-name str :capitalize nil))))
+
+  ;; Lisp -> SQL
+  (:src  "lisp"
+   :dst  "sql"
+   :type t
+   :fn   (val val))
+
+  (:src  "lisp"
+   :dst  "sql"
+   :type symbol
+   :fn   (sym (symbol-name sym)))
+
+  (:src  "lisp"
+   :dst  "sql"
+   :type string
+   :fn   (str (format nil "'~a'" (clean-name str :capitalize nil))))
+
+  (:src  "lisp"
+   :dst  "sql"
+   :type list
+   :fn   (list (mapcar #'(lambda (elem) (transl elem "lisp>sql")) list)))
+
+  (:src  "lisp"
+   :dst  "sql"
+   :type value-list
+   :fn   (list (sql-list (rest list) :parens t)))
+
+  (:src  "lisp"
+   :dst  "sql"
+   :type enclosed-value-list
+   :fn   (list (sql-list (rest list) :parens nil)))
+
+  ;; Excel -> SQL
+  (:src  "xl"
+   :dst  "sql"
+   :type t
+   :fn   (val val))
+
+  (:src  "xl"
+   :dst  "sql"
+   :type empty-cell
+   :fn   (val "NULL"))
+
+  (:src  "xl"
+   :dst  "sql"
+   :type hudate-parsable
+   :fn   (val (apply #'format nil "~4,'0d-~2,'0d-~2,'0d" (parse-hudate val)))))
+
+
 ;;; ----------------------------------------------------------------------
 ;;; SQL statement text
 
@@ -425,11 +494,11 @@
       (format nil "~a~{~a~^ ~}~a" open list2 close))))
 
 
-;;; ----------------------------------------------------------------------
+#|;;; ----------------------------------------------------------------------
 ;;; Excel support
 
 
-(defun xlval->sql (value)
+(defun xlval->sql (value) ;;; SWAP THIS TO REWRITE
   "Transform VALUE read from Excel for inserting into SQL."
   (let ((date (parse-hudate value)))
     (cond
@@ -437,7 +506,7 @@
      (date (apply #'format nil "~4,'0d-~2,'0d-~2,'0d" date))  ; dates will be formed as 2020-01-05
      (t value))))                                             ; everything esle will pass as-is
 
-
+|#
 ;;; ----------------------------------------------------------------------
 ;;; Network pathnames
 

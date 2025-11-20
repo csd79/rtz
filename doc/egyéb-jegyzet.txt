@@ -1,0 +1,67 @@
+      (TYPE-REWRITES list) : list elemeinek átírása írott SQL formára (sql.lisp)
+        típustól függően:
+          lista: ha első eleme :VALS : "(1, 2, 3, 4)"
+                 ha első eleme :@VALS : "1, 2, 3, 4"
+                 különben: minden elemre TYPE-REWRITES
+          szimbólum: SYMBOL-NAME
+          sztring:   '<sztring>'
+          egyébként: IDENTITY
+
+
+
+
+      (XLVAL->SQL value) : value átírása Excelből SQL formára (utilities.lisp)
+        ha EMPTY-CELL-P => "NULL"
+        ha PARSE-HUDATE-val értelmezhető => "éééé-hh-nn"
+        egyébként value
+
+
+
+
+      type
+      predicate
+      source
+      destination
+
+
+      A négy szelektor pontozása mellé kell egy változó ami megmondja hogy
+      egyáltalán kompatibilis-e az átíró. Ha a forrás, cél vagy a másik két
+      szelektor nem egyezik, akkor nem is kell tovább vizsgálni mert úgyis
+      ki kell hagyni.
+
+      Utána újra kell alkotni az XLVALés TYPE-REWRITES által kezelt eseteket
+      az új keretrendszerben. Ehhez szükséges a jelenleg REWRITE-ban lévő 
+      dátumfüggvények és -típusok áttétele a megfelelő csomagba.
+
+
+
+
+      (valid-date-p year month day)      rtz/utilities
+      (defun identify-month string)      wax/utilities
+      (defun parse-hudate string)        wax/utilities
+        --->  mindet a wax/utilities-ba!
+
+
+
+
+      XLVAL és TYPE-REWRITES jelenleg alkalmazásait kiváltani az új cuccal.
+        XLVAL: import/collect-row-values
+        TYPE-REWRITES: sql/clause
+
+
+
+
+
+      TOVÁBBI ÖTLETEK:
+      Legyen olyan translator ami alapvető tisztítást végez szöveges adatokon. 
+      Pl. ha egy iskola nevében dupla space szerepel, akkor a név az igénylések 
+      INSERT statement-ben ()-ként jelenik meg (>sql ?!)
+
+TK-hoz kapcsolni jelenleg csak akkor tud, ha ki van írva h Tankerületi Központ (az importban???)
+
+A sémában fel kéne tüntetni milyen translatorral fogadja az SQL az adatot. És kell egy default. DE MI LEGYEN FELTÜNTETVE? LABEL? Nem feltétlenül kell. Mindent fordítunk, csak a típus fog számítani.
+
+
+
+
+Ellenőrzés jelenleg csak akkor íródik ki, ha menet közben nem történik esemény. UNWIND-PROTECT!

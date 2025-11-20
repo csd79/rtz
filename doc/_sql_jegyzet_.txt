@@ -18,7 +18,7 @@ Beillesztés
 
 
 Módosítás
-    UDPATE table SET col1=val1 WHERE col2=?
+    UDPATE table SET col1=val1, col2=val2 WHERE col2=?
 
 
 WHERE; operátorok: =, <> v. !=, <, >, <=, >=
@@ -94,6 +94,12 @@ CL-SQLITE: ITER
                on-database db with-parameters (25))
       (format t "~a   ~a   ~a~%" szemely-id nev eletkor))
 
+
+
+
+
+
+===================================================================
 
 
 
