@@ -4,7 +4,6 @@
 (in-package #:rtz)
 
 
-
 ;;; ----------------------------------------------------------------------
 ;;; Browser
 
@@ -42,10 +41,10 @@
 
    (update
     capi:push-button
-    :accessor update
+    :accessor updateb
     :text "Módosítás"
     :callback-type :interface
-    :callback (:initarg :update))
+    :callback (:initarg :updateb))
 
    (import-em
     capi:push-button
@@ -77,10 +76,10 @@
 
    (reset-query
     capi:push-button
-    :accessor reset-query
+    :accessor reset-queryb
     :text "Rendezés/szûrés alaphelyzetbe"
     :callback-type :interface
-    :callback (:initarg :reset-query))
+    :callback (:initarg :reset-queryb))
 
    (selected
     capi:push-button
@@ -146,7 +145,7 @@
     :retract-callback nil
 
     :new-record nil
-    :update nil
+    :updateb nil
     :invalidate nil
     :import-em nil
     :export-em nil
@@ -202,10 +201,11 @@
       (drop-temp-table obj)
       ;; Create new temporary table.
       (setf id-temp-table (unique-table-name (user-token)))
-      (apply #'select-simple-id-into-temp
+      (apply #'select-id->temp
              (list (view-id (dbview obj)))
-             (append (query obj)
-                     (list :temp id-temp-table))))))
+;           (append (query obj)
+             (nconc (query obj)
+                    (list :temp id-temp-table))))))
 
 
 (defmethod init-row-count ((obj browser))
@@ -224,10 +224,13 @@
         (mp:process-run-function
          "Paging listener" ()
          #'(lambda ()
-             (setf (paging-mailbox obj) (mp:make-mailbox :size 10 :name "Paging listener mailbox"))
+             (setf (paging-mailbox obj)
+                   (mp:make-mailbox :size 10 :name "Paging listener mailbox"))
              (let ((event nil))
                (loop
-                (setf event (mp:mailbox-wait-for-event (paging-mailbox obj) :wait-reason "Waiting for page fault."))
+                (setf event (mp:mailbox-wait-for-event
+                             (paging-mailbox obj)
+                             :wait-reason "Waiting for page fault."))
                 (when (functionp event)
                   (funcall event))
                 (setf event nil)))))))
@@ -238,12 +241,14 @@
   (labels ((worker (previous current rest)
              (if (null rest)
                ;; Nothing in rest, end processing
-               (append previous (list current))
+;               (append previous (list current))
+               (nconc previous (list current))
                ;; Compare current with first of rest
                (if (= (- (car (first rest)) (cdr current)) 1)
                  (worker previous (cons (car current) (cdr (first rest)))
                          (rest rest))
-                 (worker (append previous (list current))
+;                 (worker (append previous (list current))
+                 (worker (nconc previous (list current))
                          (first rest)
                          (rest rest))))))
     (let ((ordered (sort pages #'< :key #'car)))
@@ -253,15 +258,17 @@
 (defun load-page (obj from &optional (upto 0 upto-provided-p))
   "Load a single page."
   (with-slots (dbview query id-temp-table page-size) obj
-    (with-db-context 
-      (apply #'select-simple-by-temp
-             (append (list (view-columns dbview))
-                     query
-                     (list :temp id-temp-table
-                           :id   (view-id dbview)
-                           :limit (if upto-provided-p (1+ (- upto from)) page-size)
-                           :offset from
-                           :order-by (view-order dbview)))))))
+    (let ((*sqlfn* #'sql->sv))
+      (apply #'select-by-temp
+;           (append (list (view-columns dbview))
+             (nconc (list (view-columns dbview))
+                    query
+                    (list :temp id-temp-table
+                          :id   (view-id dbview)
+                          :limit (if upto-provided-p (1+ (- upto from)) page-size)
+                          :offset from
+                          :order-by (view-order dbview)))))))
+;)
 
 
 (defun reloader (obj missing-pages)
@@ -590,25 +597,13 @@
   (destructuring-bind (labels keyword ops format types)
       subs
     (declare (ignore labels types))
-    (append (list keyword (nth column (view-columns (dbview obj))))
-            ops
-            (when (and format values)
-              (list (apply #'format nil format values))))))
+;    (append (list keyword (nth column (view-columns (dbview obj))))
+    (nconc (list keyword (nth column (view-columns (dbview obj))))
+           ops
+           (when (and format values)
+             (list (apply #'format nil format values))))))
 
 
-#|(defun reduce-clauses (heap)
-  "Construct sorting/filtering clause for the query."
-  (let* ((keywords (remove-duplicates (mapcar #'first heap))))
-    (mapcar #'(lambda (keyword)
-                (let ((relevants (remove-if-not
-                                  #'(lambda (row)
-                                      (eq (first row) keyword))
-                                  heap)))
-                  (list keyword
-                        (butlast (apply #'append (mapcar #'(lambda (subexpr)
-                                                             (list (rest subexpr) 'and))
-                                                         relevants))))))
-            keywords)))|#
 (defun reduce-clauses (heap)
   "Construct sorting/filtering clause for the query."
   (let* ((keywords (remove-duplicates (mapcar #'first heap))))
@@ -636,7 +631,8 @@
                   (push (resolve-single-clauses obj column subs values)
                         heap))))
     (setf result (reduce-clauses (nreverse heap)))
-    (setf (query obj) (apply #'append result))
+;    (setf (query obj) (apply #'append result))
+    (setf (query obj) (apply #'nconc result))
     (init-query obj)))
 
 
@@ -684,7 +680,6 @@
 
 
 (defun import-from-xlsx (interface);;;;;;;;;;;;;;;;;; with-browser-locker ????
-;  (declare (ignore interface))
   (let* ((raws  (capi:prompt-for-files "Üzenet" :filter "*.xlsx" ))
          (files (sort (mapcar #'namestring raws) #'string<=)))
     (when files
@@ -738,7 +733,7 @@
 (defun settings ()
   (let ((obj (make-instance 'wax-script)))
     (init-state obj :last-user-id nil :db-file "")
-    (load-state obj :package-name "SIG")
+    (load-state obj :package-name "RTZ")
     (wg-window
      "Beállítások"
      180
@@ -760,7 +755,7 @@
           (setf (get-state obj :db-file)
                 (resolve-network-filename (get-state obj :db-file)))
           (wg-msg "~a" (get-state obj :db-file))
-          (save-state obj :package-name "SIG"))))))
+          (save-state obj :package-name "RTZ"))))))
 
 
 ;;; New / update --------------------------
@@ -799,40 +794,33 @@
       (let ((fields (mapcar #'(lambda (key) (field data key)) '(:a :b :c))))
         (apply
          #'wg-window
-         (append (list "Ablakocska" 80)
-                 (apply #'append (mapcar #'list '("Elsõ" "Második" "Harmadik")
-                                         fields))
-                 (list (wg-button
-                        "OK"
-                        #'(lambda (interface)
-                            (declare (ignore interface))
-                            (mapc #'(lambda (key pane)
-                                      (setf (getf data key)
-                                            (capi:text-input-pane-text pane)))
-                                  '(:a :b :c)
-                                  fields)
-                            (wg-msg "~a" data)
-                            ))
-                       (wg-button
-                        "Mégsem"
-                        nil)
-                       )
-                 ))))))|#
-
-#|
-     KICSIT BÉNA, HOGY HA EGYSZER KIVÁLASZTUNK VALAMIT, AZT NEM LEHET UNSELECTELNI. HA EGY SOR LENNE KIVÁLASZTVA ÉS ÚJRA RÁKLIKKELNÉNK, MEGSZÛNHETNE A KIVÁLASZTÁS!
-
-  Ha ROWS üres, új rekord
-  Ha egy eleme van, azon rekord minden adata módosítható
-  Ha több eleme van, a tömeges módosításra jelölt mezõk módosíthatók
-  |#
+         (nconc (list "Ablakocska" 80)
+                (apply #'nconc (mapcar #'list '("Elsõ" "Második" "Harmadik")
+                                       fields))
+                (list (wg-button
+                       "OK"
+                       #'(lambda (interface)
+                           (declare (ignore interface))
+                           (mapc #'(lambda (key pane)
+                                     (setf (getf data key)
+                                           (capi:text-input-pane-text pane)))
+                                 '(:a :b :c)
+                                 fields)
+                           (wg-msg "~a" data)
+                           ))
+                      (wg-button
+                       "Mégsem"
+                       nil)
+                      )
+                ))))))|#
 
 
 ;;; BROWSER -------------------------------
 
 
 (defun header-callback (item interface)
-  (let ((column (position item (view-labels (dbview interface))
+  (let* ((list (view-labels (dbview interface)))
+        (column (position item list;(view-labels (dbview interface))
                           :test #'string=)))
     (multiple-value-bind (x y)
         (capi:current-pointer-position
@@ -859,7 +847,7 @@
             :row-height         row-height
             :header-height      header-height
             :max-pages          5
-            :reset-query        #'reset-query
+            :reset-queryb       #'reset-query
             :selected-button    #'(lambda (interface)
                                     (wg-msg "~a" (selected-records interface)))
             :selection-callback #'save-selection
@@ -869,7 +857,7 @@
             :import-em  #'import-from-xlsx
             :bsettings  #'settings
             :new-record #'(lambda (interface) (input-window interface :new))
-            :update     #'(lambda (interface) (input-window interface :modify)))))
+            :updateb    #'(lambda (interface) (input-window interface :modify)))))
       ;; STAGE 2
       (start-paging-listener interface)
       (reset-query interface)

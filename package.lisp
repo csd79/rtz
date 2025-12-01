@@ -95,9 +95,9 @@
    #:dump-table                           ; 
    #:number-of-rows                       ; 
    #:create-table                         ; create table from a list of column definitions
-   #:insert-into                          ; insert a list of values into listed columns of a table
+   #:insert                               ; insert a list of values into listed columns of a table
    #:select                               ; basic SELECT
-       ;; select-simple
+       ;; smart-select
    #:table                                ; what table does column appear in?
    #:qualified-p                          ; does column contain table name prefix?
    #:unqualify                            ; remove table name from column name
@@ -110,10 +110,10 @@
    #:all-join-keys                        ; JOIN-KEYS for multiple routes
    #:find-join                            ; find the join that uses KEY
    #:frills                               ; calculate from tables, join clauses and proper where clause
-   #:select-simple                        ; simplified SELECT
-   #:count-simple                         ; COUNT, accepting the same args as SELECT-SIMPLE
-   #:select-simple-if-into-temp           ; create temp table, select id column into it
-   #:select-simple-by-temp                ; select columns where row id is in TEMP
+   #:smart-select                         ; simplified SELECT
+   #:count-simple                         ; COUNT, accepting the same args as SMART-SELECT
+   #:select-id->temp                      ; create temp table, select id column into it
+   #:select-by-temp                       ; select columns where row id is in TEMP
 ;   #:
 
    ;; IMPORT.LISP

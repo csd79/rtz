@@ -1,5 +1,5 @@
 ;;; -*- Msode: Common-Lisp; Author: denes.cselovszky@gmail.com -*-
-
+                                                                              ;
 
 (in-package #:rtz)
 
@@ -35,10 +35,11 @@
 
 (defun synonym= (thing-1 thing-2 synonyms &key (test #'astring=))
   "Compare 2 strings (or other things) using a synonyms dictionary."
-  (let ((candidates (apply #'append (remove-if-not
-                                     #'(lambda (row)
-                                         (member thing-1 row :test test))
-                                     synonyms))))
+;  (let ((candidates (apply #'append (remove-if-not
+  (let ((candidates (apply #'nconc (remove-if-not
+                                    #'(lambda (row)
+                                        (member thing-1 row :test test))
+                                    synonyms))))
     (member thing-2 candidates :test test)))
 
 
@@ -57,6 +58,22 @@
   (>= (string-similarity ref-string shaky-string test)
       threshold))
 
+(defun hudate->sql (hudate)
+  (apply #'format nil "~4,'0d-~2,'0d-~2,'0d" hudate))
+
+#|(defun xl-date->sql (value)
+  (let ((hudate (typecase value
+                  (hudate-parsable (parse-hudate value))
+                  (number (excel-date value))
+                  (t (error
+                      "Unable to convert ~a (of type ~a) to SQL date string."
+                      value (type-of value))))))
+    (when hudate
+      (hudate->sql hudate))))|#
+
+(defun clean-str-sql (string)
+  (str:ensure (clean-name string :capitalize nil) :wrapped-in "'"))
+
 
 ;;; ----------------------------------------------------------------------
 ;;; Database context
@@ -72,332 +89,6 @@
   "Disconnect *DB*, should be called on exiting the program."
   (when (typep *db* 'sqlite-handle)
     (disconnect *db*)))
-
-
-;;; ----------------------------------------------------------------------
-;;; Schema handling
-
-
-(defun select-table (table)
-  "Get TABLE's sub-plist from SCHEMA."
-  (find-if #'(lambda (record) (eq (getf record :table) (string->symbol table)))
-           (getf *schema* :tables)))
-
-
-(defun select-column (column table)
-  "Get COLUMN's sub-plist from TABLE's sub-plist from SCHEMA."
-  (find-if #'(lambda (record) (eq (getf record :column) (string->symbol column)))
-           (getf (select-table (string->symbol table)) :columns)))
-
-
-(defun schema-tables ()
-  "List names of all tables defines in SCHEMA."
-  (mapcar #'(lambda (table) (getf table :table))
-          (getf *schema* :tables)))
-
-
-(defun schema-columns (table)
-  "List names of columns in TABLE."
-  (mapcar #'(lambda (column) (getf column :column))
-          (getf (select-table table) :columns)))
-
-
-(defun column-description (column table)
-  "List keywords describing COLUMN in TABLE."
-  (getf (select-column column table) :desc))
-
-
-(defun find-import-if (predicate)
-  "Find import that satisfies PREDICATE."
-  (find-if predicate (getf *schema* :imports)))
-
-(defun default-import ()
-  "Name of the default import."
-  (getf (find-import-if #'(lambda (import) (getf import :default-p))) :name))
-
-(defun import-mapping (&optional (name nil))
-  "Return the mapping for IMPORT."
-  (getf (find-import-if #'(lambda (import)
-                            (eq (getf import :name)
-                                (or name (default-import)))))
-        :mapping))
-
-(defun column-import (column mapping)
-  "Spreadsheet column to import value for COLUMN. MAPPING must be the result of IMPORT-MAPPING."
-  (second (find column mapping :key #'first)))
-
-
-(defun column-impersonal (column table)
-  "Tell whether column in mass-updateable."
-  (getf (select-column column table) :impersonal))
-
-
-(defun many-joins (table)
-  "List joins defined for many-table TABLE."
-  (remove-if-not #'(lambda (record) (eq (first record) (string->symbol table)))
-                 (getf *schema* :connections)))
-
-
-(defun all-connections (accessor)
-  "List all individual elements of the connection field."
-  (remove-duplicates
-   (mapcar accessor (getf *schema* :connections))))
-
-
-(defun one-tables ()
-  "List all 'one' tables from SCHEMA."
-  (all-connections #'second))
-
-
-(defun many-tables ()
-  "List all 'many' tables from SCHEMA."
-  (all-connections #'first))
-
-
-(defun import-columns (table &optional (import nil))
-  "List all columns in TABLE that has an :IMPORT value in SCHEMA."
-  (let ((mapping (mapcar #'first (import-mapping import)))
-        (columns (mapcar #'(lambda (column) (getf column :column))
-                         (getf (select-table table) :columns))))
-    (remove-if-not #'(lambda (column)
-                       (find column mapping))
-                   columns)))
-
-(defun foreign-columns (table)
-  "List all columns in TABLE that doesn't have an :IMPORT value in SCHEMA."
-  (remove-if #'(lambda (column)
-                 (or (getf column :import)
-                     (and (search '(primary key)
-                                  (getf column :desc)))))
-             (getf (select-table table) :columns)))
-
-
-(defun immd-worker (column list)
-  "Worker fn for IMMEDIATE-P and FOREIGN-P."
-  (member column list :key #'(lambda (rec) (getf rec :column))))
-  
-(defun immediate-p (column table)
-  "Does COLUMN have an :IMPORT key?"
-  (member column (import-columns table)))
-
-(defun foreign-p (column table)
-  "Is COLUMN without an :IMPORT key?"
-  (immd-worker column (foreign-columns table)))
-
-
-(defun root-table ()
-  "Return the name of the root table of *SCHEMA*."
-  (getf *schema* :root))
-
-
-(defun new-only-p (table)
-  "Returns T if TABLE should contain unique records."
-  (getf (select-table table) :new-only))
-
-
-(defun primary-key-p (column table)
-  "Returns T if COLUMN is TABLE's primary key."
-  (search '(primary key)
-          (getf (select-column column table) :desc)))
-
-
-(defun primary-key (table)
-  "What column is the primary key of TABLE?"
-  (find-if #'(lambda (column)
-               (primary-key-p column table))
-           (schema-columns table)))
-
-
-(defun view (view)
-  "Return view named VIEW."
-  (getf (getf *schema* :views) view))
-
-
-(defun view-id (view)
-  "Return id column name for VIEW."
-  (getf (view view) :id))
-
-
-(defun view-meat (view)
-  "Helper fn for VIEW-COLUMNS & VIEW-LABELS."
-  (getf (view view) :columns))
-
-
-(defun view-columns (view)
-  "Return columns of VIEW."
-  (mapcar #'first (view-meat view)))
-
-
-(defun view-labels (view)
-  "Return column labels of VIEW."
-  (mapcar #'second (view-meat view)))
-
-
-(defun view-colwidths (view)
-  "Return column widths of VIEW."
-  (mapcar #'third (view-meat view)))
-
-
-(defun view-order (view)
-  "Return the default ordering for VIEW."
-  (getf (view view) :order))
-
-
-(defun column-type (column table)
-  "Determine type of COLUMN in TABLE."
-  (destructuring-bind (&key type desc &allow-other-keys)
-      (select-column column table)
-    (cond ((eq type :date) type)
-          ((member 'text desc) :string)
-          ((member 'integer desc) :integer)
-          (t nil))))
-
-
-(defun view-impersonal (view)
-  "List impersonal columns from VIEW."
-  (remove-if #'(lambda (column)
-                 (let ((first (first column)))
-                   (not (column-impersonal first (first (table first :foreign-allowed t))))))
-             (getf (view view) :columns)))
-
-
-(defun foreign-table (table column)
-  "Foreign table linked to TABLE by key COLUMN."
-  (second (find-if #'(lambda (row)
-                       (eq column (third row)))
-                   (many-joins table))))
-
-
-;;; ----------------------------------------------------------------------
-;;; Types
-
-
-(defun sequencep (value)
-  "T if VALUE is of type sequence."
-  (typep value 'sequence))
-
-
-(defun seq-of-strings-p (value)
-  "T if VALUE is a sequence of strings."
-  (and value
-       (sequencep value)
-       (every #'identity (mapcar #'stringp (coerce value 'list)))))
-(deftype seq-of-strings () '(satisfies seq-of-strings-p))
-
-
-(defun seq-of-seqs-p (value)
-  "T if VALUE is a sequence of sequences."
-  (and value
-       (sequencep value)
-       (every #'identity (mapcar #'sequencep (coerce value 'list)))))
-(deftype seq-of-seqs () '(satisfies seq-of-seqs-p))
-
-
-(defun stringp-or-symbolp (value)
-  "T if VALUE is either a string or a symbol."
-  (or (stringp value)
-      (symbolp value)))
-
-
-(defun seq-of-strings-or-symbols-p (value)
-  "T if VALUE is a sequence of strings or symbols."
-  (and value
-       (sequencep value)
-       (every #'identity (mapcar #'stringp-or-symbolp
-                                 (coerce value 'list)))))
-(deftype seq-of-strings-or-symbols ()
-  '(satisfies seq-of-strings-or-symbols-p))
-
-
-(defun seq-of-strings-symbols-or-numbers-p (value)
-  "T if VALUE is a sequence of strings, symbols or numbers."
-  (and value
-       (sequencep value)
-       (every #'(lambda (element)
-                  (or (stringp-or-symbolp element)
-                      (numberp element)))
-              (coerce value 'list))))
-(deftype seq-of-strings-symbols-or-numbers ()
-  '(satisfies seq-of-strings-symbols-or-numbers-p))
-
-
-(defun seq-of-seqs-of-strings-or-symbols-p (value)
-  "T if VALUE is a sequence of sequences of strings or symbols."
-  (and value
-       (sequencep value)
-       (every #'identity (mapcar #'seq-of-strings-or-symbols-p
-                                 (coerce value 'list)))))
-(deftype seq-of-seqs-of-strings-or-symbols ()
-  '(satisfies seq-of-seqs-of-strings-or-symbols-p))
-
-
-(deftype value-list ()
-  "A string of elements separated by commas, enclosed in parenthesis."
-  `(and list (not null) (satisfies ,#'(lambda (list) (eq (first list) :vals)))))
-
-(deftype enclosed-value-list ()
-  "A string of elements separated by commas."
-  `(and list (not null) (satisfies ,#'(lambda (list) (eq (first list) :@vals)))))
-
-
-
-;;; ----------------------------------------------------------------------
-;;; Translators
-
-
-(deftranslators *rtz-translators*
-  ;; string -> SQL
-  (:src  "str"
-   :dst  "sql"
-   :type string
-   :fn   (str (format nil "~a" (clean-name str :capitalize nil))))
-
-  ;; Lisp -> SQL
-  (:src  "lisp"
-   :dst  "sql"
-   :type t
-   :fn   (val val))
-
-  (:src  "lisp"
-   :dst  "sql"
-   :type symbol
-   :fn   (sym (symbol-name sym)))
-
-  (:src  "lisp"
-   :dst  "sql"
-   :type string
-   :fn   (str (format nil "'~a'" (clean-name str :capitalize nil))))
-
-  (:src  "lisp"
-   :dst  "sql"
-   :type list
-   :fn   (list (mapcar #'(lambda (elem) (transl elem "lisp>sql")) list)))
-
-  (:src  "lisp"
-   :dst  "sql"
-   :type value-list
-   :fn   (list (sql-list (rest list) :parens t)))
-
-  (:src  "lisp"
-   :dst  "sql"
-   :type enclosed-value-list
-   :fn   (list (sql-list (rest list) :parens nil)))
-
-  ;; Excel -> SQL
-  (:src  "xl"
-   :dst  "sql"
-   :type t
-   :fn   (val val))
-
-  (:src  "xl"
-   :dst  "sql"
-   :type empty-cell
-   :fn   (val "NULL"))
-
-  (:src  "xl"
-   :dst  "sql"
-   :type hudate-parsable
-   :fn   (val (apply #'format nil "~4,'0d-~2,'0d-~2,'0d" (parse-hudate val)))))
 
 
 ;;; ----------------------------------------------------------------------
@@ -425,7 +116,9 @@
 
 (defun existing-tables ()
   "List existing tables in DATABASE."
-  (apply #'nconc (execute-to-list *db* "SELECT name FROM sqlite_master WHERE type='table'")))
+  (with-db-context 
+    (apply #'nconc (execute-to-list *db*
+     "SELECT name FROM sqlite_master WHERE type='table'"))))
 
 
 (defparameter *temp-name* nil)
@@ -450,7 +143,7 @@
           (many-joins table)))
 
 
-(defun column-names (arg)
+(defun column-names (arg &optional (sql-names nil))
   "Parse a list of column names from ARG."
   (let ((list
          (typecase arg
@@ -461,7 +154,9 @@
            (array  (loop for c from 0 below (array-dimension arg 1)
                          collecting (aref arg 0 c)))
            (t      (error "Cannot parse a list of column names from ~a." arg)))))
-    (mapcar #'sql-name list)))
+    (if sql-names
+      (mapcar #'sql-name list)
+      list)))
 
 
 (defun septd (list &key (in-parens t))
@@ -494,19 +189,6 @@
       (format nil "~a~{~a~^ ~}~a" open list2 close))))
 
 
-#|;;; ----------------------------------------------------------------------
-;;; Excel support
-
-
-(defun xlval->sql (value) ;;; SWAP THIS TO REWRITE
-  "Transform VALUE read from Excel for inserting into SQL."
-  (let ((date (parse-hudate value)))
-    (cond
-     ((empty-cell-p value) "NULL")                            ; empty cells will become NULLs
-     (date (apply #'format nil "~4,'0d-~2,'0d-~2,'0d" date))  ; dates will be formed as 2020-01-05
-     (t value))))                                             ; everything esle will pass as-is
-
-|#
 ;;; ----------------------------------------------------------------------
 ;;; Network pathnames
 

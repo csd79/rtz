@@ -53,13 +53,62 @@
 
 
       TOVÁBBI ÖTLETEK:
-      Legyen olyan translator ami alapvető tisztítást végez szöveges adatokon. 
-      Pl. ha egy iskola nevében dupla space szerepel, akkor a név az igénylések 
-      INSERT statement-ben ()-ként jelenik meg (>sql ?!)
+Legyen olyan translator ami alapvető tisztítást végez szöveges adatokon. 
+Pl. ha egy iskola nevében dupla space szerepel, akkor a név az igénylések 
+INSERT statement-ben ()-ként jelenik meg (>sql ?!)
 
-TK-hoz kapcsolni jelenleg csak akkor tud, ha ki van írva h Tankerületi Központ (az importban???)
 
-A sémában fel kéne tüntetni milyen translatorral fogadja az SQL az adatot. És kell egy default. DE MI LEGYEN FELTÜNTETVE? LABEL? Nem feltétlenül kell. Mindent fordítunk, csak a típus fog számítani.
+
+
+
+      Meg kell vizsgálni, hogy az alábbiak helyesek-e:
+      - insert, select, update stb (sql.lisp): listákat fogadnak, ebből
+      szöveges SQL statementet állítanak élő és ezt továbbítják az adatbázisnak.
+      - smart-insert/resolve... (import.lisp): a séma és egy egyszerű értéklista 
+      (amely minden adatot egyben szemlél, nem foreign táblákra bontva) alapján 
+      triggerel sql műveleteket, amelyeket az sql.lisp fájlban lévő függvények 
+      hajtatnak végre.
+
+
+
+
+
+      Régi transl setup:
+        - import/collect-row-values: "xl>sql" (dátumok sql formájú stringbe; üres 
+        cellák "NULL"-ba)
+        - sql/clause (select, update): "prg>sql" (:vals; :@vals; lista; "sym"; "'str'")
+        - sql/insert: <"column-spec"> (...)
+      Ezzel több probléma is van:
+        - collect-row-values: cimke helyesen "xl>prg"
+        - insert: ez oszlop-specifikus fordítást akar csinálni az értéken 
+        közvetlenül SQLite-nak küldés előtt. Ez nem jó stratégia. Az oszlopspec 
+        fordítást azon a ponton kellene végezni ahol az adat eléri a programot. 
+      Ez jelenleg három forrásból történhet:
+        - REPL (import.lisp): "repl>oszlop"
+        - Excel (import.lisp): "xl>oszlop"
+        - GUI (gui.lisp): "gui>oszlop" (kell insert/update trigger fn ami hívja az 
+          import/smart-insert/smart-update fn-eket)
+Teendők:
+       - A smart- függvényeket átírni úgy hogy fordítsanak. Oszlopspecifikus szelekció 
+         kell, továbbá az, hogy a smart- függvénynek megadható legyen a forrás.
+       - TRANSL-VALS, TRANSL-WHERE-VALUE és most a SMART-CONTEXT: oszlopspec transl
+         előkészítése ugyanaz, ki kéne tenni önálló függvénybe.
+       - Importáláshoz módosítani kell a temp->fix függvényt hogy smart- függvényeket
+         használjon, "xl" forrással.
+ (ámde most az 1. tábla 1. sorának telefonszámából dátumot csinál) (typep "+36 1 234 5679" 'hudate-parsable) => T !!!!!!!!!!!!!!!!
+ - A gui.lisp-be kellenek függvények smart- függvényeket triggerelnek gombnyomásra,
+   "gui" forrással.
+   
+
+
+
+
+
+
+ 
+
+
+
 
 
 

@@ -10,7 +10,10 @@
 
 (defparameter *schema*
   
-  '(:tables
+  '(:transl "sch>"
+
+
+    :tables
     ;; Table names, column names & definitions
     ((:table igenylesek
       :columns ((:column igenyles_id
@@ -83,11 +86,14 @@
       :new-only t)
 
      (:table tank_kozpontok
+;      :transl ">tkk"
       :columns ((:column tank_kozpont_id
                  :desc (integer primary key))
                 (:column tank_kozpont
                  :desc (text not null unique)
-                 :impersonal t))
+                 :impersonal t
+                 :transl "sch>tk"
+                 ))
       :new-only t)
      
      (:table beosztasok
@@ -123,7 +129,8 @@
                  :desc (integer))
                 (:column szul_datuma
                  :desc (text not null)
-                 :type :date))
+                 :type :date
+                 :transl "sch>date"))
       :new-only t)
 
      (:table varosok

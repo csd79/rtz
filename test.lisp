@@ -4094,10 +4094,14 @@
 
 
 (defun male-name (&optional (double nil))
-  (let ((result (append (list (random-one *raw-surnames*)
+#|  (let ((result (append (list (random-one *raw-surnames*)
                               (random-one *male-forenames*))
                         (when (> (random 1.0) 0.8)
-                          (list (random-one *male-forenames*))))))
+                          (list (random-one *male-forenames*))))))|#
+  (let ((result (list* (random-one *raw-surnames*)
+                       (random-one *male-forenames*)
+                       (when (> (random 1.0) 0.8)
+                         (list (random-one *male-forenames*))))))
     (if (string= (second result) (third result))
       (male-name)
       (if double
@@ -4107,7 +4111,9 @@
 
 (defun mrs (husband full)
   (if full
-    (append (butlast husband) (list (concatenate 'string (first (last husband)) "né")))
+;    (append (butlast husband)
+    (nconc (butlast husband)
+           (list (concatenate 'string (first (last husband)) "né")))
     (list (concatenate 'string (first husband) "né"))))
 
 
@@ -4115,22 +4121,33 @@
   (let* ((married (> (random 1.0) 0.4))
          (type    (random 5))
          (husband (male-name))
-         (maiden  (append (list (random-one *raw-surnames*)
+#|         (maiden  (append (list (random-one *raw-surnames*)
                                 (random-one *female-forenames*))
                           (when (> (random 1.0) 0.8)
-                            (list (random-one *female-forenames*)))))
+                            (list (random-one *female-forenames*)))))|#
+         (maiden  (list* (random-one *raw-surnames*)
+                         (random-one *female-forenames*)
+                         (when (> (random 1.0) 0.8)
+                           (list (random-one *female-forenames*)))))
          (used    (case type
-                    (0 (append (list (first husband)) (rest maiden)))
+;                    (0 (append (list (first husband)) (rest maiden)))
+                    (0 (list* (first husband) (rest maiden)))
                     (1 (mrs husband t))
-                    (2 (append (list (concatenate 'string (first (mrs husband nil))
-                                                  " " (first maiden)))
-                               (rest maiden)))
-                    (3 (append (list (format nil "~{~a~^ ~} ~a"
+#|                    (2 (append (list (concatenate 'string (first (mrs husband nil))
+                                                  " " (first maiden)))|#
+                    (2 (list* (concatenate 'string (first (mrs husband nil))
+                                           " " (first maiden))
+                              (rest maiden)))
+#|                    (3 (append (list (format nil "~{~a~^ ~} ~a"
                                              (mrs husband t)
-                                             (first maiden)))
-                               (rest maiden)))
-                    (4 (append (list (concatenate 'string (first husband) "-" (first maiden)))
-                               (rest maiden))))))
+                                             (first maiden)))|#
+                    (3 (list* (format nil "~{~a~^ ~} ~a"
+                                      (mrs husband t)
+                                      (first maiden))
+                              (rest maiden)))
+;                    (4 (append (list (concatenate 'string (first husband) "-" (first maiden)))
+                    (4 (list* (concatenate 'string (first husband) "-" (first maiden))
+                              (rest maiden))))))
     (if (or (string= (second husband) (third husband))
             (string= (second maiden) (third maiden))
             (string= (first husband) (first maiden)))
@@ -4236,38 +4253,42 @@
   (let* ((institution (institution))
          (person      (person))
          (from        (random-date-between start-year 6 1 (+ start-year 3) 6 1))
-         (til         (append (list (+ (first from) 3)) (rest from)))
+;         (til         (append (list (+ (first from) 3)) (rest from)))
+         (til         (list* (+ (first from) 3) (rest from)))
          (state       (random-one '("Érvényes" "Visszavont"))))
-    (append (list
-             :institution (first institution)
-             :rank (rank))
-            person
-            (list
-             :id (id)
-             :phone (phone)
-             :email (email (getf person :name))
-             :district (second institution)
-             :cert (cert)
-             :valid-from (datestring from)
-             :valid-til  (datestring til)
-             :type (random-one '("kiadmányozó" "alibi"))
-             :medium (random-one '("Hardveres (CD)" "Hardveres (USB kulcs)"))
-             :state state
-             :redacted-p (if (string= state "Visszavont") "Igen" "")
-             :redact-date (if (string= state "Visszavont") (datestring til) "")))))
+;    (append (list
+    (nconc (list
+            :institution (first institution)
+            :rank (rank))
+           person
+           (list
+            :id (id)
+            :phone (phone)
+            :email (email (getf person :name))
+            :district (second institution)
+            :cert (cert)
+            :valid-from (datestring from)
+            :valid-til  (datestring til)
+            :type (random-one '("kiadmányozó" "alibi"))
+            :medium (random-one '("Hardveres (CD)" "Hardveres (USB kulcs)"))
+            :state state
+            :redacted-p (if (string= state "Visszavont") "Igen" "")
+            :redact-date (if (string= state "Visszavont") (datestring til) "")))))
 
 
 (defun ensure3 (list)
   (if (= (length list) 2)
-    (append list (list ""))
+;    (append list (list ""))
+    (nconc list (list ""))
     list))
 
 
 (defun print-row (row)
   (let* ((values (loop for (nil v) on row by #'cddr collecting v))
-         (repaired (append (subseq values 0 2)
-                           (ensure3 (nth 2 values))
-                           (ensure3 (nth 3 values))
-                           (ensure3 (nth 4 values))
-                           (subseq values 5))))
+;         (repaired (append (subseq values 0 2)
+         (repaired (nconc (subseq values 0 2)
+                          (ensure3 (nth 2 values))
+                          (ensure3 (nth 3 values))
+                          (ensure3 (nth 4 values))
+                          (subseq values 5))))
     (format t "~{~a~^|~}~%" repaired)))

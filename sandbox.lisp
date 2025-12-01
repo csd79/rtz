@@ -26,7 +26,7 @@
 (defun ctest-insert (prefix)
   (let ((unitime (get-universal-time)))
     (with-ctest-db
-      (insert-into 'teszt '(szoveg szam) nil
+      (insert 'teszt '(szoveg szam) nil
                    (format nil "~a_~a" prefix unitime)
                    unitime))
     unitime))
@@ -99,10 +99,10 @@
                            (szerv_egysegek tank_kozpontok tank_kozpont_id))
               :where `(,(col 'tank_kozpont 'tank_kozpontok) = "Egri Tankerületi Központ"))|#
       
-#|      (select-simple '(igenyles_id)
-               :where '(tank_kozpont = "Egri Tankerületi Központ"))|#
+#|      (smart-select '(igenyles_id)
+              :where '(tank_kozpont = "Egri Tankerületi Központ"))|#
 
-#|      (select-simple '(telefon)
+#|      (smart-select '(telefon)
                :where '(email like "%@isi%"))|#
 
       )))
