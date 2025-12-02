@@ -31,10 +31,10 @@
    :type empty-cell
    :fn   (val "NULL"))
 
-  (:src  "xl"
+#|  (:src  "xl"
    :dst  "prg"
    :type hudate-parsable
-   :fn   (str (hudate->sql (parse-hudate str))))
+   :fn   (str (hudate->sql (parse-hudate str))))|#
 
 
 

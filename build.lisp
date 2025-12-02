@@ -7,7 +7,7 @@
 (in-package "RTZ")
 (setf *independent-exe* t)
 (lw:deliver 'start
-    "c:\\Users\\cselovszkid\\common-lisp\\rtz\\rtz_v0.29.exe"
+    "c:\\Users\\cselovszkid\\common-lisp\\rtz\\rtz_v0.30.exe"
     5
     :interface :capi
     :console :io

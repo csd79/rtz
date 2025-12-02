@@ -53,9 +53,9 @@
 
 
       TOVÁBBI ÖTLETEK:
-Legyen olyan translator ami alapvető tisztítást végez szöveges adatokon. 
-Pl. ha egy iskola nevében dupla space szerepel, akkor a név az igénylések 
-INSERT statement-ben ()-ként jelenik meg (>sql ?!)
+      Legyen olyan translator ami alapvető tisztítást végez szöveges adatokon. 
+      Pl. ha egy iskola nevében dupla space szerepel, akkor a név az igénylések 
+      INSERT statement-ben ()-ként jelenik meg (>sql ?!)
 
 
 
@@ -88,29 +88,10 @@ INSERT statement-ben ()-ként jelenik meg (>sql ?!)
         - Excel (import.lisp): "xl>oszlop"
         - GUI (gui.lisp): "gui>oszlop" (kell insert/update trigger fn ami hívja az 
           import/smart-insert/smart-update fn-eket)
-Teendők:
+      Teendők:
        - A smart- függvényeket átírni úgy hogy fordítsanak. Oszlopspecifikus szelekció 
          kell, továbbá az, hogy a smart- függvénynek megadható legyen a forrás.
        - TRANSL-VALS, TRANSL-WHERE-VALUE és most a SMART-CONTEXT: oszlopspec transl
          előkészítése ugyanaz, ki kéne tenni önálló függvénybe.
        - Importáláshoz módosítani kell a temp->fix függvényt hogy smart- függvényeket
          használjon, "xl" forrással.
- (ámde most az 1. tábla 1. sorának telefonszámából dátumot csinál) (typep "+36 1 234 5679" 'hudate-parsable) => T !!!!!!!!!!!!!!!!
- - A gui.lisp-be kellenek függvények smart- függvényeket triggerelnek gombnyomásra,
-   "gui" forrással.
-   
-
-
-
-
-
-
- 
-
-
-
-
-
-
-
-Ellenőrzés jelenleg csak akkor íródik ki, ha menet közben nem történik esemény. UNWIND-PROTECT!

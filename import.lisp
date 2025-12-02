@@ -216,14 +216,12 @@
                      (TANUSITVANY_ALLAPOTA "Érvényes")))
 
 
-(defun insert-update-test (list)
-;  (with-transl (*rtz-translators*)
-    (verify-statements (:execute t)
-      (let ((ids (mapcar #'(lambda (row)
-                             (smart-insert row ""))
-                         (list *b4*))))
-        t)));)
-;        (smart-update ids *b3*)))))
+(defun insert-update-test ()
+  (verify-statements (:execute t)
+    (let ((ids (mapcar #'(lambda (row)
+                           (smart-insert row ""))
+                       (list *b1* *b2*))))
+      (smart-update ids *b3* ""))))
 
 
 (defun resolve-table-test (list)
