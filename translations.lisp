@@ -31,22 +31,15 @@
    :type empty-cell
    :fn   (val "NULL"))
 
-#|  (:src  "xl"
-   :dst  "prg"
-   :type hudate-parsable
-   :fn   (str (hudate->sql (parse-hudate str))))|#
-
 
 
   ;; Schema -> columns --------------------------------
   ;; ...
   (:src  "sch"
-;   :dst  ""
    :type t
    :fn   (val val))
 
   (:src  "sch"
-;   :dst  ""
    :type string
    :fn   (str (clean-name str :capitalize nil)))
 
@@ -89,7 +82,6 @@
    :dst  "sql"
    :type string
    :fn   clean-str-sql)
-;   :fn   (str (clean-str-sql str)))
 
   (:src  "prg"
    :dst  "sql"

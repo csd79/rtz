@@ -34,6 +34,7 @@
         :mapping))
 
 (defun map-import (header-names &optional (mapping nil))
+  "Substitute import file header names to schema column names."
   (let ((mapping* (import-mapping (or mapping (default-import)))))
     (if mapping*
       (loop for name in header-names
@@ -73,9 +74,9 @@
                                   (getf column :desc)))))
              (getf (select-table table) :columns)))
 
-#|(defun new-only-p (table)
+(defun new-only-p (table)
   "Returns T if TABLE should contain unique records."
-  (getf (select-table table) :new-only))|#
+  (getf (select-table table) :new-only))
 
 
 ;;; ----------------------------------------------------------------------
@@ -110,9 +111,9 @@
   "List all 'one' tables from SCHEMA."
   (all-connections #'second))
 
-#|(defun many-tables ()
+(defun many-tables ()
   "List all 'many' tables from SCHEMA."
-  (all-connections #'first))|#
+  (all-connections #'first))
 
 (defun immd-worker (column list)
   "Worker fn for IMMEDIATE-P and FOREIGN-P."

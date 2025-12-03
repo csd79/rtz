@@ -86,7 +86,6 @@
       :new-only t)
 
      (:table tank_kozpontok
-;      :transl ">tkk"
       :columns ((:column tank_kozpont_id
                  :desc (integer primary key))
                 (:column tank_kozpont

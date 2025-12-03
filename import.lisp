@@ -15,14 +15,13 @@
           (width (xarray-width rows)))
       (do-xarows (row r rows)
         (push (loop for c from 0 below width collecting
-;                  (xlval->sql (xcref row c)))
                     (transl (xcref row c) "xl>prg"))
               accum))
       (apply #'nconc (nreverse accum)))))
 
 
 (defun group-rows (xarray start height)
-  "Xarray rows of one group starting from row START."
+  "xarray rows of one group starting from row START."
   (let* ((end     (min height (+ start *rows-per-statement*)))
          (indices (loop for i from start below end collecting i)))
     (xarows xarray (coerce indices 'vector))))
@@ -51,45 +50,13 @@
   "Move data from TEMP into fix tables."
   (verify-statements (:execute t)
   (let* ((column-names (column-names (source-data obj key) nil))
-;        (temp-header  (table-columns temp))
          (temp-header  (map-import column-names))
-         (temp-rows    (dump-table temp))
-;        (root-table   (root-table))
-         )
-#|    (multiple-value-bind (header fails)
-        (map-import temp-header)
-      (declare (ignore fails))|#
-    (dump obj "~a~%~a~5%" temp-header (length temp-header))
+         (temp-rows    (dump-table temp)))
     (dolist (row temp-rows)
-;      (dump obj "~a~5%" (length row))
-
       (smart-insert (mapcar #'list temp-header row) "")
-;      (dump obj "~{~a~%~}~%" (mapcar #'list temp-header row))
-
       (dump obj "~a~%~%" row)
       (pstep obj :step step)
-      (pabort obj)
-      )))
-  )
-;)
-
-;(column-names (source-data obj key) t)
-
-
-
-;;; ----------------------------------------------------------------------
-;;; Single row insert / update
-
-
-#|  (let ((mapping (import-mapping 'tk)))
-    (column-import 'anya_utonev_2 mapping)
-    ...)
-
-(defun insertdb (columns values)
-  ...)
-
-(defun updatedb (id columns values)
-  ...)|#
+      (pabort obj)))))
 
 
 ;;; ----------------------------------------------------------------------
@@ -106,9 +73,7 @@
                        summing (xarray-indexed-height (source-data obj key))
                        doing   (wax::purge-data-source obj key)))
            (step-import 1)
-           (step-fix (* step-import 6))
-;           (*sqlfn* #'sql->list)
-           )
+           (step-fix (* step-import 6)))
       ;; Setf progress limit according to number of lines
       (setf (pstep-limit obj) (* rows (+ step-import step-fix)))
       ;; Import each data source via separate temp tables:
@@ -226,8 +191,6 @@
 
 (defun resolve-table-test (list)
   (with-db-context
-    (let (
-;(*sqlfn* #'sql->list)
-          (labels  (mapcar #'first list))
+    (let ((labels  (mapcar #'first list))
           (values  (mapcar #'second list)))
       (resolve-table 'igenylesek labels values))))

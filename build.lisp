@@ -7,12 +7,13 @@
 (in-package "RTZ")
 (setf *independent-exe* t)
 (lw:deliver 'start
-    "c:\\Users\\cselovszkid\\common-lisp\\rtz\\rtz_v0.30.exe"
+    "c:\\Users\\cselovszkid\\common-lisp\\rtz\\rtz_v0.31.exe"
     5
     :interface :capi
     :console :io
     :multiprocessing t
-    :icon-file "c:\\Users\\cselovszkid\\common-lisp\\rtz\\img\\ico.ico"
+    :icon-file "c:\\Users\\cselovszkid\\common-lisp\\rtz\\img\\ico2.ico"
+    :startup-bitmap-file "c:\\Users\\cselovszkid\\common-lisp\\rtz\\img\\frieda640.bmp"
     :keep-symbols '(*appdir* *independent-exe*)
     :packages-to-keep-externals '(wax msoffice) ; fn-s called indirectly
     :keep-package-manipulation t

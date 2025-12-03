@@ -1,6 +1,0 @@
-12345678901234567890123456789012345678901234567890123456789012345678901234567890
-
-A szűrés bekapcsolható de hibás eredményt ad. Ezután ha újból a fejlécre
-kattintunk, a „[*] <oszlopnév>” nevet próbálja keresni a rendelkezésre
-álló oszlopnevek közül, ami hibához vezet.
-

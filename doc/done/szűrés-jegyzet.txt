@@ -1,0 +1,21 @@
+     Csak az első oszlophoz (ID) jelennek meg a szűrések rendesen, a többinél
+     csak a "Szűrés nélkül".
+
+     Egy szűrést be tudunk álltani, és az eredmény helyesen is jelenik meg,
+     de ekkor minden oszlop neve előútt megjelenik a [*], és a köv. szűrés
+     már hibát eredményez: ha újból a fejlécre kattintunk, a „[*] <oszlopnév>”
+     nevet próbálja keresni a rendelkezésre álló oszlopnevek közül.
+
+     Most már jelzéstől  függetlenül lehet új oszlopokra is szűrni, viszont
+     a REFRESH-COLUMNDEFS csak arra képes hogy minden oszlopra bekapcsolja
+     a jelzést, de sokra ki is kell kapcsolni.
+     GET-POPUP-SELECTION  /  RESTORE-POPUP-SELECTION ???
+
+     Nem tudok más módot ennek jelzésére, mint hogy módostjuk a fejléc szövegét.
+     Legyenek erre függvények, amelyek ki/bekapcsolják a jelzést, ill. amikor
+     kiolvassuk az oszlop nevét egyéb műveletek esetén, akkor a jelzést hagyja
+     figyelmen kivül.
+
+     A felugró paraméterablak alig vehető észre néha. Ott jelenjen meg
+     mindig ahol a kurzor van, és az ablaknak legyen valami sötétebb
+     szine hogy észrevehetőbb legyen.

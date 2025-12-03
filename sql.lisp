@@ -70,7 +70,6 @@
    (column-definition 'email 'igenylesek)  =>  'email text not nul'"
   (str:unwords
    (mapcar #'sql-name
-;           (nconc (list column) (column-description column table)))))
            (list* column (column-description column table)))))
 
 (defun column-defs (table)
@@ -95,7 +94,8 @@
 (defun param-pattern (cols rows)
   "Create a pattern of SQL parameters.
   (param-pattern 2 3)  =>  '(?, ?), (?, ?), (?, ?)'"
-  (let ((one-row (sql-list (loop for c from 0 below cols collecting "?") :parens t)))
+  (let ((one-row (sql-list (loop for c from 0 below cols collecting "?")
+                           :parens t)))
     (sql-list (loop for r from 0 below rows collecting one-row) :parens nil)))
 
 (defun where= (columns values)
@@ -105,26 +105,22 @@
     (butlast (apply #'nconc mains))))
 
 (defun select-same (table cols vals)
+  "Select from TABLE where WHERE= is true."
   (select (list (primary-key table))
           :from table :where (where= cols vals)))
 
 
 ;;; ----------------------------------------------------------------------
-;;; Requesting infor about tables & the DB
+;;; Requesting info about tables & the DB
 
 
 (defun table-info (table)
   "Return a list of columns descriptions for TABLE."
-;  (let ((*sqlfn* #'sql->list))
   (funcall *sqlfn* (statement "pragma table_info(~a)" table)))
-;)
 
 (defun table-columns (table)
   "List the names of TABLE's columns."
   (mapcar #'second (table-info table)))
-#|  (mapcar #'(lambda (info)
-              (intern (string-upcase (second info))))
-          (table-info table)))|#
 
 (defun dump-table (table)
   "Return the complete contents of TABLE in the form of a list."
@@ -135,11 +131,6 @@
                                   table))
       (error "Table not found in db: ~a." table))))
 
-#|(defun number-of-rows (table)
-  "Return the number of rows in TABLE."
-  (second (first (funcall *sqlfn* (statement "select ~s, count(*) from ~a"
-                                             (first (table-columns table))
-                                             table)))))|#
 (defun number-of-rows (table)
   "Return the number of rows in TABLE."
   (cadar (funcall *sqlfn*
@@ -149,11 +140,9 @@
 
 (defun db-info ()
   "Print the description of every table in DATABASE."
-;  (let ((*sqlfn* #'sql->list))
     (dolist (table (existing-tables))
       (format t "~%~%~a  -------------------------------------~%~{~a~%~}"
               table (table-info table) 'list)))
-;)
 
 
 ;;; ----------------------------------------------------------------------
@@ -174,12 +163,12 @@
                        (string name)
                        (t (error "'~a' is not a usable clause name." name))))
         (transl      (transl arg "prg>sql")))
-;    (septd (nconc (list (str:replace-all "-" " " name-string))
     (septd (list* (str:replace-all "-" " " name-string)
                   (if (listp transl) transl (list transl)))
            :in-parens nil)))
 
-(defun clause-left-join (table-many table-one column-many &optional (column-one nil))
+(defun clause-left-join (table-many table-one column-many
+                                    &optional (column-one nil))
   "Generate LEFT JOIN clause."
   (clause :left-join (list table-one 'on (col column-many table-many) '=
                            (col (or column-one column-many) table-one))))
@@ -198,7 +187,8 @@
                (let* ((first  (symbol->string (first list)))
                       (second (symbol->string (second list)))
                       (accum  (if (and (second list)
-                                       (member second '("asc" "desc") :test #'string-equal))
+                                       (member second '("asc" "desc")
+                                               :test #'string-equal))
                                 (format nil "~a ~a" first second)
                                 first)))
                  (cons accum (worker (if (string= first accum)
@@ -207,42 +197,6 @@
     (let* ((list*   (if (listp ordering) ordering (list ordering)))
            (strings (worker list*)))
       (clause :order-by (sql-list strings)))))
-
-#|(defmacro defclause (name key list-p)
-  "Define clause generator fns where the argument remains unprocessed."
-  (let ((var (gensym)))
-    `(defun ,name (,var) (clause ,key ,(if list-p `(list ,var) var)))))
-
-(defclause clase-where    :where    nil)
-(defclause clase-having   :having   nil)
-(defclause clase-group-by :group-by t)
-(defclause clase-from     :from     t)
-(defclause clase-limit    :limit    t)
-(defclause clase-offset   :offset   t)|#
-
-#|(defun clause-where (filter-list)
-  "Generate WHERE clause."
-  (clause :where filter-list))
-
-(defun clause-having (filter-list)
-  "Generate HAVING clause."
-  (clause :having filter-list))
-
-(defun clause-group-by (column)
-  "Generate GROUP BY clause."
-  (clause :group-by (list column)))
-
-(defun clause-from (table)
-  "Generate FROM clause."
-  (clause :from (list table)))
-
-(defun clause-limit (value)
-  "Generate LIMIT clause."
-  (clause :limit (list value)))
-
-(defun clause-offset (value)
-  "Generate OFFSET clause."
-  (clause :offset (list value)))|#
 
 
 ;;; ----------------------------------------------------------------------
@@ -279,54 +233,10 @@
                    (seq-of-strings-or-symbols         (column-names cols-arg t))
                    (t                                 (column-defs name)))))
     (if columns
-      (funcall *sqlfn* (statement "create table ~a ~a" name (sql-list columns :parens t)))
+      (funcall *sqlfn* (statement "create table ~a ~a" name
+                                  (sql-list columns :parens t)))
       (error "Couldn't create table ~a: list of columns is empty." name))))
 
-#|(defun insert (table dest new-only &rest values)
-  "Insert translated VALUES into COLUMNS of TABLE."
-  (let* ((width  (if (sequencep dest) (length dest) 1))
-         (length (length values))
-         (height (round (/ length width)))
-         (ignore (if new-only "OR IGNORE " "")))
-    ;; If number of values doesn't correspond with number of columns => error.
-    (unless (= length (* width height))
-      (error "Number of columns (~a) <> number of values (~a)." width length))
-    ;; Translated values.
-    (let ((transl (mapcar #'(lambda (col val)
-                              (transl val (column-transl table col)))
-                          (if (sequencep dest) dest
-                            (make-list length :initial-element dest))
-                          values)))
-      ;; Operation.
-      (funcall *sqlfn* (statement "insert ~ainto ~a ~a values ~a" ignore table
-                                  ;; List of destination columns.
-                                  (sql-list (if (= width 1)
-                                              (list dest)
-                                              dest)
-                                            :parens t)
-                                  ;; Patern of ?s.
-                                  (param-pattern width height))
-               transl))))|#
-#|(defun insert (table dest new-only &rest values)
-  "Insert translated VALUES into COLUMNS of TABLE."
-  (let* ((width   (if (sequencep dest) (length dest) 1))
-         (length  (length values))
-         (height  (round (/ length width)))
-         (ignore  (if new-only "OR IGNORE " ""))
-         (error   (unless (= length (* width height))
-                    (error "Number of columns (~a) <> number of values (~a)." width length)))
-         (transl  (mapcar #'(lambda (col val)
-                              (transl val (column-transl table col)))
-                          (if (sequencep dest) dest
-                            (make-list length :initial-element dest))
-                          values))
-         (dlist   (sql-list (if (= width 1) (list dest) dest) :parens t))
-         (pattern (param-pattern width height)))
-    (declare (ignore error))
-    ;; Operation.
-    (funcall *sqlfn*
-             (statement "insert ~ainto ~a ~a values ~a" ignore table dlist pattern)
-             transl)))|#
 (defun insert (table dest new-only &rest values)
   "Insert translated VALUES into COLUMNS of TABLE."
   (let* ((width   (if (sequencep dest) (length dest) 1))
@@ -334,36 +244,27 @@
          (height  (round (/ length width)))
          (ignore  (if new-only "OR IGNORE " ""))
          (error   (unless (= length (* width height))
-                    (error "Number of columns (~a) <> number of values (~a)." width length)))
+                    (error "Number of columns (~a) <> number of values (~a)."
+                           width length)))
          (dlist   (sql-list (if (= width 1) (list dest) dest) :parens t))
          (pattern (param-pattern width height)))
     (declare (ignore error))
     ;; Operation.
     (funcall *sqlfn*
-             (statement "insert ~ainto ~a ~a values ~a" ignore table dlist pattern)
+             (statement "insert ~ainto ~a ~a values ~a"
+                        ignore table dlist pattern)
              values)))
 
-(defun select (columns &key (distinct nil) (from nil)     (left-join nil) (where nil)
-                            (order-by nil) (group-by nil) (having nil)
-                            (limit nil)    (offset nil)   (inserts '()))
+(defun select (columns &key (distinct nil) (from nil)     (left-join nil)
+                            (where nil)    (order-by nil) (group-by nil)
+                            (having nil)   (limit nil)    (offset nil)
+                            (inserts '()))
   "Select rows."
   ;; Simple clauses, no processing needed
-#|  (destructuring-bind (where* having* group-by* from* limit* offset*)
-      (mapcar #'(lambda (val key list)
-                  (if val (clause key (if list (list val) val)) ""))
-              (list where having group-by from limit offset)
-              '(:where :having :group-by :from :limit :offset)
-              '(nil nil t t t t))|#
   (let* ((distinct*  (if distinct "distinct" ""))
          (columns*   (sql-list columns))
          (left-join* (if left-join (clauses-left-join left-join) ""))
          (order-by*  (if order-by  (clause-order-by order-by) ""))
-#|         (where*     (if where (clause-where where) ""))
-         (having*    (if having (clause-having having) ""))
-         (group-by*  (if group-by (clause-group-by group-by) ""))
-         (from*      (if from (clause-from from) ""))
-         (limit*     (if limit (clause-limit limit) ""))
-         (offset*    (if offset (clause-offset offset) ""))|#
          (where*     (if where     (clause :where    where)           ""))
          (having*    (if having    (clause :having   having)          ""))
          (group-by*  (if group-by  (clause :group-by (list group-by)) ""))
@@ -371,11 +272,12 @@
          (limit*     (if limit     (clause :limit    (list limit))    ""))
          (offset*    (if offset    (clause :offset   (list offset))   ""))
          (statement  (str:unwords (str:words
-                                   (statement "select ~a ~a ~a ~a ~a ~a ~a ~a ~a ~a"
-                                              distinct* columns* from* left-join*
-                                              where* group-by* having*
-                                              order-by* limit* offset*)))))
-      (funcall *sqlfn* statement inserts)));)
+                                   (statement
+                                    "select ~a ~a ~a ~a ~a ~a ~a ~a ~a ~a"
+                                    distinct* columns* from* left-join*
+                                    where* group-by* having*
+                                    order-by* limit* offset*)))))
+      (funcall *sqlfn* statement inserts)))
 
 (defun cols=vals (columns values)
   "Generate subexpression COL1=VAL1, COL2=VAL2..."
@@ -397,7 +299,8 @@
                    `(,idcol = ,ids))))
     ;; If number of values doesn't correspond with number of columns => error.
     (unless (= collen vallen)
-      (error "Numberof columns (~a) does not equal number of values (~a)." collen vallen))
+      (error "Numberof columns (~a) does not equal number of values (~a)."
+             collen vallen))
     ;; Operation
     (funcall *sqlfn* (statement "update ~a set ~a ~a"
                                 table
@@ -480,14 +383,12 @@
   (let ((columns '()))
     (loop for index from 0 below (length tree)
           for current = (nth index tree)
-;          doing (if (consp current)
           doing (if (and (consp current)
                          (not (typep current 'value-list)))
                   (push (where-columns current) columns)
                   (when (where-column-p tree index)
                     (push (list current) columns))))
     (mapcar #'unqualify (apply #'nconc columns))))
-;    (mapcar #'unqualify (apply #'append columns))))
 
 
 (defun update-src (label src)
@@ -512,9 +413,6 @@
   "LIST element on position INDEX is a value list. Return it with it's values translated."
   (when (>= index 2)
     (let* ((column (unqualify (nth (- index 2) list)))
-#|           (table  (first (table column :foreign-allowed t)))
-           (label  (column-transl table column))
-           (label* (update-src label src)))|#
            (label* (column-transl-label column src)))
       (list* :vals (mapcar #'(lambda (value)
                                (transl value label*))
@@ -537,43 +435,24 @@
   (let* ((column-index
           ;; If previous is a relational op, column is the 2nd previous element
           (cond ((and (>= index 2)
-                      (member (nth (1- index) list) '(= <> != < > <= >= like between)))
-                 (nth (- index 2) list))
+                      (member (nth (1- index) list)
+                              '(= <> != < > <= >= like between)))
+;                 (nth (- index 2) list))
+                 (- index 2))
                 ;; If 3rd previous is 'between', column is the 4th previous
                 ((and (>= index 4)
                       (eq (nth (- index 3) list) 'between))
-                 (nth (- index 4) list))
+;                 (nth (- index 4) list))
+                 (- index 4))
                 (t nil)))
          ;; Determine label for column
-         (column (when (integerp column-index) (unqualify (nth column-index list))))
-#|         (table  (first (table column :foreign-allowed t)))
-         (label  (column-transl table column))
-         (label* (update-src label src)))|#
-         (label* (column-transl-label column src)))
+         (column (when (integerp column-index)
+                   (unqualify (nth column-index list))))
+         (label* (column-transl-label column :src src)))
     ;; Do the translation
     (transl (nth index  list) label*)))
 
 
-#|(defun qualify-where (tree)
-  "Ensure qualified column names in a WHERE clause."
-  ;;  (beosztas = 1 and orszagok.orszag < 2 or (szerv_egys > 6 and tank_kozpont = 5) and
-  ;;      t_kapcs_eszkoz = 0)
-  ;;          =>
-  ;;  (BEOSZTASOK.BEOSZTAS = 1 AND ORSZAGOK.ORSZAG < 2 OR (SZERV_EGYSEGEK.SZERV_EGYS > 6 AND
-  ;;      TANK_KOZPONTOK.TANK_KOZPONT = 5) AND T_KAPCS_ESZKOZOK.T_KAPCS_ESZKOZ = 0)
-  (loop for index from 0 below (length tree)
-        for current  = (nth index tree) 
-        collecting (if (consp current)
-                     ;; If element is an embedded list, recursive call
-                     (qualify-where current)
-                     ;; Else, if element is a non-qualified column name, qualify it
-                     (if (and (where-column-p tree index)
-                              (not (qualified-p current :strict t :missing-error t)))
-                       (qualify (string->symbol current) :non-column-allowed t
-                                :primary-key-allowed t
-                                )
-                       ;; If it is not, take it unmodified.
-                       current))))|#
 (defun rewrite-where (list src)
   "Ensure qualified column names in a WHERE clause."
   ;;  (beosztas = 1 and orszagok.orszag < 2 or (szerv_egys > 6 and tank_kozpont = 5) and
@@ -581,8 +460,6 @@
   ;;          =>
   ;;  (BEOSZTASOK.BEOSZTAS = 1 AND ORSZAGOK.ORSZAG < 2 OR (SZERV_EGYSEGEK.SZERV_EGYS > 6 AND
   ;;      TANK_KOZPONTOK.TANK_KOZPONT = 5) AND T_KAPCS_ESZKOZOK.T_KAPCS_ESZKOZ = 0)
-#|  (loop for index from 0 below (length list)
-        for current = (nth index list) collecting|#
   (loop for index from 0
         for current in list collecting
         (cond ;; When current element is...
@@ -609,8 +486,9 @@
          (from-tables (remove-if #'(lambda (table)
                                      (member table no-ones))
                                  list)))
-    ;; If there are no columns from the root table in the subject columns for select,
-    ;; this might return an empty list and SMARTY will not generate 'from' and joins.
+    ;; If there are no columns from the root table in the subject columns
+    ;; for select, this might return an empty list and SMARTY will not
+    ;; generate 'from' and joins.
     (if (member (root-table) from-tables)
       from-tables
       (append (list (root-table)) from-tables))))
@@ -624,7 +502,9 @@
                (list t)
                ;; Otherwise, if ROOT has possible left joins, evaluate them.
                (first (remove nil (mapcar #'(lambda (record)
-                                              (let ((ret (traverse (second record) column*)))
+                                              (let ((ret (traverse
+                                                          (second record)
+                                                          column*)))
                                                 (when ret
                                                   (cons (third record) ret))))
                                           (many-joins root*)))))))
@@ -635,7 +515,6 @@
 (defun sort-join-keys (list)
   "Sort keys in hierarchical order."
   (let ((all (all-connections #'identity)))
-;        (manys (many-tables)))
     (labels ((dig (key)
                (let ((many (first (find key all :key #'third))))
                  (if many
@@ -667,11 +546,8 @@
                                             :foreign-allowed t))
                                  all-nq-columns))
          (from-tables    (from-tables (delete-duplicates all-tableses)))
-;         (from-tables    (append (list (root-table)) (from-tables (delete-duplicates all-tableses))))
          (join-keys      (all-join-keys from-tables all-nq-columns))
          (join-clauses   (mapcar #'find-join join-keys))
-#|         (qwhere         (qualify-where where)))
-    (values from-tables join-clauses qwhere)))|#
          (new-where      (rewrite-where where src)))
     (values from-tables join-clauses new-where)))
 
@@ -740,17 +616,13 @@
   "Mid layer between the RESOLVE-fns and OP-FN."
   (with-db-context
     (with-transl (*rtz-translators* :verify nil)
-      (let (
-            ;(*sqlfn* #'sql->list)
-            (cols    (mapcar #'first list))
-            (vals    (mapcar #'(lambda (pair)
-                                 (let* ((column (unqualify (first pair)))
-#|                                      (table  (first (table column :foreign-allowed t)))
-                                      (label  (column-transl table column))
-                                      (label* (update-src label src)))|#
-                                        (label* (column-transl-label column :src src)))
-                                   (transl (second pair) label*)))
-                             list)))
+      (let ((cols    (mapcar #'first list))
+            (vals    (mapcar
+                      #'(lambda (pair)
+                          (let* ((column (unqualify (first pair)))
+                                 (label* (column-transl-label column :src src)))
+                            (transl (second pair) label*)))
+                      list)))
         (smart-resolve
          (resolve-table (root-table) cols vals)
          op-fn test-fn)))))
@@ -765,26 +637,17 @@
 
 (defun smart-select (columns &key (where '()) (limit nil) (offset nil)
                              (order-by '()) (distinct nil) (src ""))
-                     ; (:group-by cols) :having col
   (with-db-context 
     (with-transl (*rtz-translators* :verify nil)
       ;; Source tables, join clauses, where with qualified column names
       (multiple-value-bind (from-tables join-clauses qwhere)
           (smarty columns where src)
         (apply #'select
-;             (append (list columns :from from-tables :left-join join-clauses :where qwhere)
                (nconc (list columns :distinct distinct :from from-tables
                             :left-join join-clauses :where qwhere)
                       (when order-by (list :order-by order-by))
                       (when limit    (list :limit limit))
                       (when offset   (list :offset offset))))))))
-
-
-#|(defun count-simple (columns &key (where '()))
-  (multiple-value-bind (from-tables join-clauses qwhere)
-      (frills columns where)
-    (let ((result (select '("count(*)") :from from-tables :left-join join-clauses :where qwhere)))
-      (first (elt result 0)))))|#
 
 
 (defun select-id->temp (column &key (where '()) (order-by '()) (temp ""))
@@ -805,8 +668,6 @@
   (apply #'smart-select columns
          :order-by order-by
          :where `(,id in (select ,id from ,temp))
-#|         (append (if limit (list :limit limit) '())
-                 (if offset (list :offset offset) '()))))|#
          (nconc (when limit (list :limit limit))
                 (when offset (list :offset offset)))))
 
@@ -851,11 +712,13 @@
 
 (defun ss ()
   (verify-statements (:execute t)
-  (with-transl (*rtz-translators* :verify nil)
-    (print (smart-select '(telefon email varos) :where '(igenyles_id in (:vals 417 418))));ok
-    (print (smart-select '(telefon email) :where '(varos = "Budapest")));ok
-    (print (smart-select '(telefon email varos) :where '(varos in (:vals "Budapest" "Esztergom"))));ok
-    (print (smart-select '(varos) :distinct t :where '(tank_kozpont in (:vals "Ceglédi TK" "Pápai TK"))))
-    ))
-)
-
+    (with-transl (*rtz-translators* :verify nil)
+      (print (smart-select '(telefon email varos)
+                           :where '(igenyles_id in (:vals 417 418))))
+      (print (smart-select '(telefon email)
+                           :where '(varos = "Budapest")))
+      (print (smart-select '(telefon email varos)
+                           :where '(varos in (:vals "Budapest" "Esztergom"))))
+      (print (smart-select '(varos) :distinct t
+                           :where '(tank_kozpont in
+                            (:vals "Ceglédi TK" "Pápai TK")))))))

@@ -33,14 +33,13 @@
           (coerce sequence 'list)))
 
 
-(defun synonym= (thing-1 thing-2 synonyms &key (test #'astring=))
+#|(defun synonym= (thing-1 thing-2 synonyms &key (test #'astring=))
   "Compare 2 strings (or other things) using a synonyms dictionary."
-;  (let ((candidates (apply #'append (remove-if-not
   (let ((candidates (apply #'nconc (remove-if-not
                                     #'(lambda (row)
                                         (member thing-1 row :test test))
                                     synonyms))))
-    (member thing-2 candidates :test test)))
+    (member thing-2 candidates :test test)))|#
 
 
 (defun string-similarity (ref-string shaky-string &optional (test #'achar=))
@@ -59,19 +58,11 @@
       threshold))
 
 (defun hudate->sql (hudate)
+  "Convert HUDATE to SQL-formatted string."
   (apply #'format nil "~4,'0d-~2,'0d-~2,'0d" hudate))
 
-#|(defun xl-date->sql (value)
-  (let ((hudate (typecase value
-                  (hudate-parsable (parse-hudate value))
-                  (number (excel-date value))
-                  (t (error
-                      "Unable to convert ~a (of type ~a) to SQL date string."
-                      value (type-of value))))))
-    (when hudate
-      (hudate->sql hudate))))|#
-
 (defun clean-str-sql (string)
+  "Clean STRING and wrap it in 's."
   (str:ensure (clean-name string :capitalize nil) :wrapped-in "'"))
 
 
