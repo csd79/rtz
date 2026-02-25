@@ -225,7 +225,7 @@
                 (t_visszavonas_datuma  "Visszavonás dátuma"              80))))
 
 
-    :imports
+    :io-mappings
     ((:name      tk
       :default-p t
       :mapping   ((igazolvanyszam        "Igazolvány száma")
@@ -256,7 +256,36 @@
 
      (:name      nisz
       :default-p nil
-      :mapping   ())
+      :mapping   ("placeholder"))
+
+     (:name      export
+      :default-p nil
+      :mapping ((igenyles_id           "ID")
+                (tank_kozpont          "Tankerületi központ")
+                (szerv_egys            "Intézmény")
+                (beosztas              "Beosztás")
+                (viselt_csaladnev      "Családnév")
+                (viselt_utonev_1       "1. utónév")
+                (viselt_utonev_2       "2. utónév")
+                (szul_csaladnev        "Szül. családnév")
+                (szul_utonev_1         "Szül. 1. utónév")
+                (szul_utonev_2         "Szül. 2. utónév")
+                (anya_csaladnev        "Anya leánykori családnév")
+                (anya_utonev_1         "Anya leánykori 1. utónév")
+                (anya_utonev_2         "Anya leánykori 2. utónév")
+                (orszag                "Születési ország")
+                (varos                 "Születési város")
+                (szul_datuma           "Születési dátum")
+                (igazolvanyszam        "Igazolványszám")
+                (telefon               "Telefonszám")
+                (email                 "E-mail cím")
+                (t_sorozatszam         "Tanúsítvány sorozatszám")
+                (t_ervenyesseg_kezdete "Tanúsítvány érvényesség kedzete")
+                (t_ervenyesseg_vege    "Tanúsítvány érvényesség vége")
+                (t_tipus               "Tanúsítvány típusa")
+                (t_kapcs_eszkoz        "Kapcsolódó eszköz")
+                (t_allapot             "Tanúsítvány státusza")
+                (t_visszavonas_datuma  "Visszavonás dátuma")))
      )
 
 

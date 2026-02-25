@@ -18,24 +18,24 @@
   (find-if #'(lambda (record) (eq (getf record :column) (string->symbol column)))
            (getf (select-table (string->symbol table)) :columns)))
 
-(defun find-import-if (predicate)
+(defun find-io-mapping-if (predicate)
   "Find import that satisfies PREDICATE."
-  (find-if predicate (getf *schema* :imports)))
+  (find-if predicate (getf *schema* :io-mappings)))
 
-(defun default-import ()
+(defun default-io-mapping ()
   "Name of the default import."
-  (getf (find-import-if #'(lambda (import) (getf import :default-p))) :name))
+  (getf (find-io-mapping-if #'(lambda (import) (getf import :default-p))) :name))
 
-(defun import-mapping (&optional (name nil))
+(defun io-mapping (&optional (name nil))
   "Return the mapping for IMPORT."
-  (getf (find-import-if #'(lambda (import)
-                            (eq (getf import :name)
-                                (or name (default-import)))))
+  (getf (find-io-mapping-if #'(lambda (import)
+                                (eq (getf import :name)
+                                    (or name (default-io-mapping)))))
         :mapping))
 
-(defun map-import (header-names &optional (mapping nil))
+(defun map-io (header-names &optional (mapping nil))
   "Substitute import file header names to schema column names."
-  (let ((mapping* (import-mapping (or mapping (default-import)))))
+  (let ((mapping* (io-mapping (or mapping (default-io-mapping)))))
     (if mapping*
       (loop for name in header-names
             for mapn = (car (find name mapping* :test #'string= :key #'second))
@@ -48,9 +48,9 @@
   "Tell whether column in mass-updateable."
   (getf (select-column column table) :impersonal))
 
-(defun import-columns (table &optional (import nil))
+(defun io-columns (table &optional (mapping nil))
   "List all columns in TABLE that has an :IMPORT value in SCHEMA."
-  (let ((mapping (mapcar #'first (import-mapping import)))
+  (let ((mapping (mapcar #'first (io-mapping mapping)))
         (columns (mapcar #'(lambda (column) (getf column :column))
                          (getf (select-table table) :columns))))
     (remove-if-not #'(lambda (column)
@@ -120,11 +120,11 @@
   (member column list :key #'(lambda (rec) (getf rec :column))))
   
 (defun immediate-p (column table)
-  "Does COLUMN have an :IMPORT key?"
-  (member column (import-columns table)))
+  "Does COLUMN have an I/O key?"
+  (member column (io-columns table)))
 
 (defun foreign-p (column table)
-  "Is COLUMN without an :IMPORT key?"
+  "Is COLUMN without an I/O key?"
   (immd-worker column (foreign-columns table)))
 
 (defun primary-key-p (column table)

@@ -50,7 +50,7 @@
   "Move data from TEMP into fix tables."
   (verify-statements (:execute t)
   (let* ((column-names (column-names (source-data obj key) nil))
-         (temp-header  (map-import column-names))
+         (temp-header  (map-io column-names))
          (temp-rows    (dump-table temp)))
     (dolist (row temp-rows)
       (smart-insert (mapcar #'list temp-header row) "")
@@ -69,7 +69,7 @@
     ;; Load all data sources, sum their number of lines
     (dump obj "Sorok számlálása...~%~%")
     (let* ((rows (loop for (key) on (data-sources obj) by #'cddr
-                       doing   (load-data-source obj key)
+                       doing   (load-data-source obj key)  ; :first-row ;header-row !!!!!!!!!!!!!!!!!!!!!!!!
                        summing (xarray-indexed-height (source-data obj key))
                        doing   (wax::purge-data-source obj key)))
            (step-import 1)
@@ -83,7 +83,7 @@
             for temp = (unique-table-name (user-token))
             doing (dump obj "Fájl betöltése átmeneti táblába: ~a~%~%"
                         (source-filename obj key))
-                  (load-data-source obj key)
+                  (load-data-source obj key))  ; :first-row ;header-row !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                   (create-table temp (column-names (source-data obj key) t))
                   (import-xarray temp obj key step-import)
                   (dump obj "~%Adatok véglegesítése...~%~%")

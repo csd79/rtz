@@ -88,9 +88,9 @@
     :callback-type :interface
     :callback (:initarg :selected-button))
 
-   (disp
+   (temp-disp
     capi:title-pane
-    :accessor disp
+    :accessor temp-disp
     :text "...")
 
    (mclp
@@ -123,7 +123,7 @@
 
    (:layouts
     (upper1 capi:row-layout '(new-record update import-em export-em invalidate bsettings))
-    (upper2 capi:row-layout '(reset-query selected disp))
+    (upper2 capi:row-layout '(reset-query selected temp-disp))
     (default capi:column-layout '(upper1 upper2 mclp)))
 
    (:default-initargs
@@ -189,8 +189,9 @@
   (with-browser-locked (obj)
     (with-slots (id-temp-table) obj
       (unless (string= id-temp-table "")
-        (ignore-errors
-          (drop-table id-temp-table))
+;        (ignore-errors
+          (drop-table id-temp-table)
+;          )
         (setf id-temp-table "")))))
 
 
@@ -346,7 +347,7 @@
                    (unless (eq pos (pos obj))
                      (with-browser-locked (obj)
                        (setf (pos obj) pos
-                             (capi:title-pane-text (disp obj))
+                             (capi:title-pane-text (temp-disp obj))
                              (format nil "~a" pos)))
                      (when (numberp pos)
                        (when (set-exclusive-or (pages obj) (relevant-pages obj))
@@ -375,6 +376,8 @@
 
 (defmethod selected-records ((obj browser))
   "Return a list containing the selected records as lists."
+  (selection obj))
+
   (mapcar #'(lambda (index)
               (aref (spread obj) index))
           (selection obj)))

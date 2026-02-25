@@ -1,13 +1,36 @@
+Jelenleg felvett mappingok:
+"tk"     : eredeti igénylés beolvasásához
+"nisz"   : a NISZ-től érkező visszajelzés beolvasásához
+"export" : főablakban kijelölt tételek exportálásához
+
+
+
+
+
+
+
+
+Hol kapcsolódik az io-mapping az importálás folyamatába?
+
+
+
+
+
+
+
+
+És hol kapcsolódik az exportálás folyamatába?
+
 EXPORT-TO-XLSX: jelenleg fixen betölti az első lapot (LOAD-PAGE),
-és annak a tartalmátirja fájlba. A helyes megoldás az lenne ha
+és annak a tartalmát irja fájlba. A helyes megoldás az lenne ha
 csinálnák egy lekérdezést ami azokat az oszlopokat tartalmazza,
 amelyeket exportálni akarunk. Ezután a kiválasztott sorokat
 lekérdezzük egy új táblába és onnan sorcsoportokban kiolvassuk.
 ENNEK SEMMI KÖZE A LAPOZÁSHOZ ÉS A SPREAD-HEZ!
 
 Teendők:
- - Definiálni egy új importot (igazából exportra fogjuk használni,
-   ezért inkább io-mapping-nak kéne nevezni)
+      - Definiálni egy új importot (igazából exportra fogjuk használni,
+        ezért inkább io-mapping-nak kéne nevezni)
  - Megnézni hogy tudunk-e az io-mapping alapján lekérdezést
    generálni, ami a kivánt oszlopokat hozza. Ennek úgy kell
    működnie, hogy a kivánt sorok számát is meg tudjuk adni.

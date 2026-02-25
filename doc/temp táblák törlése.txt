@@ -1,0 +1,5 @@
+Írás pillanatában két helyen használunk temp táblákat:
+- import/import-xlsx: ez a végén törli is őket
+- gui/init-query-tempid: az OBJ-ban tárolja az aktuális lekérdezés id-it tartalmzó
+  tábla nevét. Minden híváskor először törli az előzőleg tároltat, majd csinál
+  egy újat. Itt használtam az IGNORE-ERRORS-t, de most mintha menne anélkül is.
