@@ -742,8 +742,8 @@
         (cnt  0))
     (with-wax-errorsink obj
       (with-property-accessors
-        (setf (errorsink-on) nil
-              (property-accessors-on) t)
+        (disable-errorsink obj)
+        (setf (property-accessors-on) t)
         (with-workbook (:wbook wbook :wsvars (ws1) :save t)
           ;; Save new workbook by name FILE.
           (!saveas wbook file)

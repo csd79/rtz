@@ -8,31 +8,6 @@
 ;;; General
 
 
-(defun string->symbol (arg)
-  "If ARG is a string, convert it to a symbol."
-  (typecase arg
-    (symbol arg)
-    (string (intern (string-upcase arg)))
-    (t      nil)))
-
-
-(defun symbol->string (arg)
-  "If ARG is a symbol, convert it to a string."
-  (typecase arg
-    (symbol (symbol-name arg))
-    (string arg)
-    (t      nil)))
-
-
-(defun rmapcar (function sequence)
-  "Recursive version of mapcar for a single SEQUENCE (of sequences) argument."
-  (mapcar #'(lambda (element)
-              (if (sequencep element)
-                (rmapcar function element)
-                (funcall function element)))
-          (coerce sequence 'list)))
-
-
 #|(defun synonym= (thing-1 thing-2 synonyms &key (test #'astring=))
   "Compare 2 strings (or other things) using a synonyms dictionary."
   (let ((candidates (apply #'nconc (remove-if-not
@@ -42,24 +17,10 @@
     (member thing-2 candidates :test test)))|#
 
 
-(defun string-similarity (ref-string shaky-string &optional (test #'achar=))
-  "Calculate word similarity based on Levenshtein distance."
-  (- 1 (float (/ (edit-distance:distance
-                  (str:unwords (str:words ref-string))
-                  (str:unwords (str:words shaky-string))
-                  :test test)
-                 (length ref-string)))))
-
-(defparameter *string-similarity-threshold* 0.80)
-
-(defun string~ (ref-string shaky-string &key (test #'achar=) (threshold *string-similarity-threshold*))
-  "String similarity predicate."
-  (>= (string-similarity ref-string shaky-string test)
-      threshold))
-
 (defun hudate->sql (hudate)
   "Convert HUDATE to SQL-formatted string."
   (apply #'format nil "~4,'0d-~2,'0d-~2,'0d" hudate))
+
 
 (defun clean-str-sql (string)
   "Clean STRING and wrap it in 's."
@@ -178,34 +139,3 @@
     (if comma
       (format nil "~a~{~a~^, ~}~a" open list2 close)
       (format nil "~a~{~a~^ ~}~a" open list2 close))))
-
-
-;;; ----------------------------------------------------------------------
-;;; Network pathnames
-
-
-(defun network-drives ()
-  "Return a list of Windows network drive connections as sublists (drive path)."
-  (let* ((outstream (make-string-output-stream))
-         (output    (progn (uiop:run-program "wmic path win32_mappedlogicaldisk get deviceid, providername" :output outstream)
-                      (get-output-stream-string outstream)))
-         (rows      (rest (str:split #\Newline output))))
-    (mapcar #'(lambda (string)
-                (let ((drive (subseq string 0 2))
-                      (path  (str:trim (subseq string 2))))
-                  (list drive path)))
-            (remove-if #'(lambda (string)
-                           (< (length string) 2))
-                       rows))))
-
-
-(defun resolve-network-filename (pathname)
-  "If PATHNAME refers to a location on a network drive, replace the drive designation with the true network path."
-  (let* ((namestring (namestring pathname))
-         (drives     (network-drives))
-         (result     namestring))
-    (dolist (pair drives)
-      (when (and (>= (length namestring) 2)
-                 (string-equal (first pair) (subseq namestring 0 2)))
-        (setf result (concatenate 'string (second pair) (subseq namestring 2)))))
-    (pathname result)))
